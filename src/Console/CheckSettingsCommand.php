@@ -23,6 +23,7 @@ final class CheckSettingsCommand extends Command
     {
         try {
             $config->shouldLoadMigrations();
+            $config->validateStorageOptions();
             $definitions->definitions();
         } catch (InvalidArgumentException $exception) {
             $this->error($exception->getMessage());

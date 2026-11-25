@@ -20,6 +20,8 @@ final class SettingsServiceProvider extends ServiceProvider
 
     public function boot(SettingsConfig $config): void
     {
+        $config->validateStorageOptions();
+
         if ($config->shouldLoadMigrations()) {
             $this->loadMigrationsFrom(dirname(__DIR__, 2).'/database/migrations');
         }

@@ -8,4 +8,11 @@ return [
     'migrations' => [
         'load' => SettingsConfig::defaultMigrationLoading(),
     ],
+    'columns' => [
+        'scope_id' => SettingsConfig::DEFAULT_SCOPE_ID_COLUMN,
+        'legacy_scope_id' => null,
+    ],
+    'encryption' => [
+        'strict' => SettingsConfig::defaultStrictEncryption(),
+    ],
 ];

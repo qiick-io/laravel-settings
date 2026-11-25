@@ -7,7 +7,10 @@ Laravel discovers the package's provider through Composer.
 - `Qiick\Settings\Definition` (class)
 - `Qiick\Settings\ScopeRef` (class)
 - `Qiick\Settings\ScopeRegistry` (class)
+- `Qiick\Settings\Secret` (class)
+- `Qiick\Settings\Settings` (interface)
 - `Qiick\Settings\SettingsSchema` (interface)
+- `Qiick\Settings\UndecryptableSetting` (class)
 - `Qiick\Settings\Testing\ArraySettingsSchema` (class)
 
 `ScopeRef` exposes its scope name and identifier as readonly strings. Use `instance()` for instance settings, `organisation($uuid)` for an organisation, and `user($user)` for a user. An organisation UUID is normalized to lowercase.
@@ -18,11 +21,18 @@ Declare types with `Definition::bool()`, `int()`, `float()`, `string()`, `json()
 
 Tag `SettingsSchema` implementations with `SettingsSchema::class` in the Laravel container. The combined schemas can declare a key once and must use registered scopes.
 
+`Secret::reveal()` returns plaintext to the caller. Normal string, JSON, debugger and PHP serialization representations redact the value.
+
+`Settings::revision($group, $scope)` returns the maximum revision stored for the group in that scope. An empty group starts at zero. Writes and clears advance the revision monotonically. Pass the last revision read to `set()` when saving a group edit.
+
 ## Configuration
 
 Publish `config/settings.php` with the `settings-config` tag.
 
 - `settings.migrations.load` controls whether Laravel discovers the package migrations. Defaults to `true`.
+- `settings.columns.scope_id` names the canonical string scope identifier column. Defaults to `scope_id`.
+- `settings.columns.legacy_scope_id` names an optional numeric identifier column to keep in sync. Defaults to `null`.
+- `settings.encryption.strict` controls whether `secret()` throws `UndecryptableSetting` on invalid ciphertext. Defaults to `true`. When false, an undecryptable secret is treated as absent.
 
 ## Commands
 
