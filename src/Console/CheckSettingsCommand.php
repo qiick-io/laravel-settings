@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 use PDOException;
 use Qiick\Settings\Config\SettingsConfig;
+use Qiick\Settings\Database\SettingsWriteLock;
 use Qiick\Settings\Models\Setting;
 use Qiick\Settings\Support\DefinitionRegistry;
 
@@ -33,6 +34,7 @@ final class CheckSettingsCommand extends Command
 
         try {
             $hasTable = Schema::hasTable(Setting::TABLE);
+            $hasWriteLocks = $hasTable && Schema::hasTable(SettingsWriteLock::TABLE);
         } catch (PDOException) {
             $this->error('Could not inspect the settings table.');
 
@@ -41,6 +43,12 @@ final class CheckSettingsCommand extends Command
 
         if (! $hasTable) {
             $this->error('The settings table is missing.');
+
+            return self::FAILURE;
+        }
+
+        if (! $hasWriteLocks) {
+            $this->error('The settings write locks table is missing.');
 
             return self::FAILURE;
         }

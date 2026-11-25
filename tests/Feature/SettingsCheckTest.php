@@ -25,6 +25,16 @@ it('reports when the settings table is missing', function (): void {
 
     $this->artisan('settings:check')
         ->expectsOutput('The settings table is missing.')
+        ->doesntExpectOutput('The settings write locks table is missing.')
+        ->assertExitCode(1);
+});
+
+it('reports when the write locks table is missing', function (): void {
+    Schema::shouldReceive('hasTable')->with('settings')->once()->andReturnTrue();
+    Schema::shouldReceive('hasTable')->with('settings_write_locks')->once()->andReturnFalse();
+
+    $this->artisan('settings:check')
+        ->expectsOutput('The settings write locks table is missing.')
         ->assertExitCode(1);
 });
 

@@ -11,11 +11,17 @@ use Illuminate\Support\Facades\Date;
 /**
  * Stores JSON values or ciphertext without interpreting the declared setting type.
  *
+ * @property string $key
+ * @property mixed $value
+ * @property string|null $encryption
+ *
  * @internal
  */
 final class Setting extends Model
 {
     public const string TABLE = 'settings';
+
+    public const string LARAVEL_ENCRYPTION = 'laravel-v1';
 
     protected $table = self::TABLE;
 

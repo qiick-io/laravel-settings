@@ -34,6 +34,7 @@ final readonly class SettingsConfig
         return $this->boolean('settings.encryption.strict', self::defaultStrictEncryption());
     }
 
+    /** @return non-empty-string */
     public function scopeIdColumn(): string
     {
         return $this->column('settings.columns.scope_id', self::DEFAULT_SCOPE_ID_COLUMN);
@@ -72,12 +73,19 @@ final readonly class SettingsConfig
         return $value;
     }
 
+    /** @return non-empty-string */
     private function column(string $key, ?string $default = null): string
     {
         $column = $this->config->get($key, $default);
 
-        if (! is_string($column) || preg_match('/\A[a-zA-Z_][a-zA-Z0-9_]{0,62}\z/', $column) !== 1) {
+        if (! is_string($column) || $column === '' || preg_match('/\A[a-zA-Z_][a-zA-Z0-9_]{0,62}\z/', $column) !== 1) {
             throw new InvalidArgumentException("{$key} must name a database column.");
+        }
+
+        if (in_array(strtolower($column), [
+            'id', 'scope', 'group', 'key', 'value', 'encryption', 'revision', 'metadata', 'created_at', 'updated_at',
+        ], true)) {
+            throw new InvalidArgumentException("{$key} must differ from the other settings columns.");
         }
 
         return $column;

@@ -44,10 +44,18 @@ it('fails boot when a present storage option is invalid', function (string $opti
     'nonboolean strict' => ['settings.encryption.strict', 'false'],
     'null strict' => ['settings.encryption.strict', null],
     'null scope column' => ['settings.columns.scope_id', null],
+    'empty scope column' => ['settings.columns.scope_id', ''],
     'column expression' => ['settings.columns.scope_id', 'scope_id->name'],
     'invalid legacy' => ['settings.columns.legacy_scope_id', []],
     'duplicate columns' => ['settings.columns.legacy_scope_id', 'scope_id'],
 ]);
+
+it('keeps scope column aliases separate from the other settings columns', function (string $column): void {
+    config(['settings.columns.scope_id' => strtoupper($column)]);
+
+    expect(fn () => $this->app->make(SettingsConfig::class)->validateStorageOptions())
+        ->toThrow(InvalidArgumentException::class, 'settings.columns.scope_id');
+})->with(['id', 'scope', 'group', 'key', 'value', 'encryption', 'revision', 'metadata', 'created_at', 'updated_at']);
 
 it('reports the configured key if storage validation fails during the deploy check', function (): void {
     config(['settings.encryption.strict' => 'synthetic-invalid-option']);

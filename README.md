@@ -37,8 +37,17 @@ Definitions use the `app` group and allow only the `instance` scope by default. 
 
 Secret definitions use `string()->secret()` and have a null default. The package reads secrets from encrypted database values. Products that provide their own environment fallback handle it in application code.
 
+## Reading and editing settings
+
+Resolve `Qiick\Settings\Settings` from the Laravel container. Typed reads use the stored value or the declared default. Ordinary group reads omit secrets, and `forEdit()` exposes a `has_<key>` flag. Call `secret($key)?->reveal()` when the caller needs plaintext.
+
+Read the group's `revision($group, $scope)` before reading its edit values. Pass that revision as `expectedRevision` to `set()` when saving. A conditional write targets one group and throws `StaleSetting` if another write changed its revision. The revision is monotonic across writes and clears. An empty group starts at zero.
+
+`forget()` clears the stored value and advances the revision, so subsequent reads use the default. An unconditional `set()` can update several groups in one transaction.
+
 - [Public API and deprecation policy](docs/public-api.md)
 - [Security policy](SECURITY.md)
+- [Reference schema](docs/reference-schema.md)
 - [Upgrade guide](UPGRADING.md)
 
 ## License

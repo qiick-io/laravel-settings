@@ -10,6 +10,8 @@ Laravel discovers the package's provider through Composer.
 - `Qiick\Settings\Secret` (class)
 - `Qiick\Settings\Settings` (interface)
 - `Qiick\Settings\SettingsSchema` (interface)
+- `Qiick\Settings\SettingTypeMismatch` (class)
+- `Qiick\Settings\StaleSetting` (class)
 - `Qiick\Settings\UndecryptableSetting` (class)
 - `Qiick\Settings\Testing\ArraySettingsSchema` (class)
 
@@ -23,7 +25,7 @@ Tag `SettingsSchema` implementations with `SettingsSchema::class` in the Laravel
 
 `Secret::reveal()` returns plaintext to the caller. Normal string, JSON, debugger and PHP serialization representations redact the value.
 
-`Settings::revision($group, $scope)` returns the maximum revision stored for the group in that scope. An empty group starts at zero. Writes and clears advance the revision monotonically. Pass the last revision read to `set()` when saving a group edit.
+`Settings::revision($group, $scope)` returns the maximum revision stored for the group in that scope. An empty group starts at zero. Writes and clears advance the revision monotonically. Pass the last revision read to `set()` when saving a group edit. A conditional write accepts one group. A stale revision raises `StaleSetting`.
 
 ## Configuration
 
@@ -36,11 +38,11 @@ Publish `config/settings.php` with the `settings-config` tag.
 
 ## Commands
 
-- `settings:check` validates configuration and tagged schemas, then checks that the `settings` table can be inspected. It exits nonzero on failure.
+- `settings:check` validates configuration and tagged schemas, then checks for the storage tables. It exits nonzero on failure.
 
 ## Storage
 
-The package creates the `settings` table when `settings.migrations.load` is enabled. Each setting has a unique natural key of `scope`, `scope_id`, `group` and `key`. The internal Eloquent model handles the stored JSON and stays outside the public API.
+When `settings.migrations.load` is enabled, the package creates the `settings` and `settings_write_locks` tables. See the [reference schema](reference-schema.md).
 
 ## Deprecation policy
 
