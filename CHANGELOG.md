@@ -10,5 +10,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - Shared compatibility matrix, four database targets and per-class mutation testing.
 - The `settings` table with a non-null natural key, JSON columns, revision and encryption metadata.
 - The internal Eloquent setting model and table availability in `settings:check`.
+- Settings scope references for the instance, organisations, users and application-registered scopes.
+- Tagged application schemas with typed definitions, explicit scopes and lazy defaults.
 
 [Unreleased]: https://github.com/qiick-io/laravel-settings/compare/830363d05e59b6f113ea639bb4df1e5d9119461e...develop

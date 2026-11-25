@@ -18,6 +18,25 @@ php artisan migrate
 php artisan settings:check
 ```
 
+## Declaring settings
+
+Implement `Qiick\Settings\SettingsSchema` and tag the implementation in your Laravel service provider with `SettingsSchema::class`. Declare each setting key once across all tagged schemas.
+
+```php
+return [
+    Definition::bool('two_factor_required')->default(false),
+    Definition::json('sidebar_modules')->default(fn () => ['overview' => true]),
+    Definition::enum('password_policy', PasswordPolicy::class)->default(PasswordPolicy::Required),
+    Definition::string('oidc_client_secret')->secret(),
+];
+```
+
+Definitions use the `app` group and allow only the `instance` scope by default. Use `in()` and `scopes()` to opt into other groups and scopes. Closures supply defaults on demand.
+
+`json()` accepts PHP lists and associative arrays. An enum definition accepts instances of the declared backed enum and stores their backing values. A stored backing value that fails validation falls back to the default and reports `SettingTypeMismatch`.
+
+Secret definitions use `string()->secret()` and have a null default. The package reads secrets from encrypted database values. Products that provide their own environment fallback handle it in application code.
+
 - [Public API and deprecation policy](docs/public-api.md)
 - [Security policy](SECURITY.md)
 - [Upgrade guide](UPGRADING.md)
