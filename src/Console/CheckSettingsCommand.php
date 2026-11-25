@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Qiick\Settings\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
+use PDOException;
 use Qiick\Settings\Config\SettingsConfig;
+use Qiick\Settings\Models\Setting;
 
-/** @internal Reports package configuration errors as a deployment check. */
+/** @internal Checks package configuration and table availability before deployment. */
 final class CheckSettingsCommand extends Command
 {
     protected $signature = 'settings:check';
@@ -25,7 +28,21 @@ final class CheckSettingsCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info('Settings configuration is valid.');
+        try {
+            $hasTable = Schema::hasTable(Setting::TABLE);
+        } catch (PDOException) {
+            $this->error('Could not inspect the settings table.');
+
+            return self::FAILURE;
+        }
+
+        if (! $hasTable) {
+            $this->error('The settings table is missing.');
+
+            return self::FAILURE;
+        }
+
+        $this->info('Settings configuration and table are ready.');
 
         return self::SUCCESS;
     }
