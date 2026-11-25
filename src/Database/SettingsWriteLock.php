@@ -25,6 +25,17 @@ final class SettingsWriteLock
 
         sort($buckets, SORT_NUMERIC);
 
+        $this->lockBuckets($connection, $buckets);
+    }
+
+    public function acquireAll(Connection $connection): void
+    {
+        $this->lockBuckets($connection, range(0, 63));
+    }
+
+    /** @param list<int> $buckets */
+    private function lockBuckets(Connection $connection, array $buckets): void
+    {
         if ($connection->getDriverName() === 'sqlite') {
             // A first write reserves the SQLite database as BEGIN IMMEDIATE
             // would, including when Laravel joins a caller's transaction.

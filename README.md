@@ -51,6 +51,18 @@ Read the group's `revision($group, $scope)` before reading its edit values. Pass
 
 Each request or job reads committed settings from the database and reuses the result for that group within the same scope. Reads inside a transaction go directly to the database. Writes invalidate the memo after the outer transaction commits. The memo holds only ciphertext for secret settings. A fresh request or job sees changes committed by other processes.
 
+## Maintenance commands
+
+`settings:verify` checks declared keys, scopes and stored encryption. During key rotation, put the old key in Laravel's `APP_PREVIOUS_KEYS`. Use `settings:reencrypt --dry-run` to count rows that use a previous key, then run `settings:reencrypt` to update them.
+
+```bash
+php artisan settings:export > settings.json
+php artisan settings:import settings.json --dry-run
+php artisan settings:import settings.json
+```
+
+The JSON export contains ciphertext bound to the current `APP_KEY`. Treat it as a database backup and protect it accordingly. Use the same key and declared schema when restoring. The import validates the entire file before writing and restores revision, metadata and timestamps in one transaction on an empty `settings` table. Dry run validates the file without changing storage.
+
 - [Public API and deprecation policy](docs/public-api.md)
 - [Security policy](SECURITY.md)
 - [Reference schema](docs/reference-schema.md)

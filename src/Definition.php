@@ -9,6 +9,7 @@ use Closure;
 use InvalidArgumentException;
 use Qiick\Settings\Support\StorageIdentifier;
 use SensitiveParameter;
+use TypeError;
 
 /**
  * Declares one setting's type and ownership. The group is `app` and the only
@@ -191,6 +192,22 @@ final class Definition
             'json' => is_array($value),
             'enum' => $value instanceof BackedEnum && $value::class === $this->enumClass,
         };
+    }
+
+    /** @internal Resolves the backing value used for enum storage. */
+    public function fromStoredValue(#[SensitiveParameter] mixed $value): mixed
+    {
+        $enum = $this->enumClass;
+
+        if ($enum === null || (! is_int($value) && ! is_string($value))) {
+            return $value;
+        }
+
+        try {
+            return $enum::tryFrom($value);
+        } catch (TypeError) {
+            return null;
+        }
     }
 
     private function validateDefault(#[SensitiveParameter] mixed $value): void

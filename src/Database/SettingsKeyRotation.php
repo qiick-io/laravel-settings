@@ -27,13 +27,7 @@ final readonly class SettingsKeyRotation
     public function run(bool $isDryRun): array
     {
         $active = app(Encrypter::class);
-        $cipher = config('app.cipher');
-
-        if (! is_string($cipher)) {
-            throw new InvalidArgumentException('app.cipher must name the Laravel cipher.');
-        }
-
-        $current = new Encrypter($active->getKey(), $cipher);
+        $current = $this->verification->currentEncrypter();
         $counts = ['eligible' => 0, 'unreadable' => 0];
 
         foreach (Setting::query()->useWritePdo()->where('encryption', Setting::LARAVEL_ENCRYPTION)->lazyById() as $row) {
@@ -62,11 +56,7 @@ final readonly class SettingsKeyRotation
     {
         $connection = $this->table->connection();
         $group = $row->group;
-        $id = $row->getRawOriginal('id');
-
-        if (! is_int($id) && ! is_string($id)) {
-            return 'unreadable';
-        }
+        $id = $this->table->identityOf($row);
 
         return $connection->transaction(function () use ($connection, $scope, $group, $id, $current, $active): string {
             $this->locks->acquire($connection, $scope, [$group]);

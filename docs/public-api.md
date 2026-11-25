@@ -41,8 +41,12 @@ Publish `config/settings.php` with the `settings-config` tag.
 ## Commands
 
 - `settings:check` validates configuration and tagged schemas, the storage tables, and the complete set of lock IDs from 0 through 63. It exits nonzero on failure.
-- `settings:verify` checks that rows use declared keys and scopes and that their encryption is readable. Its output contains row counts.
+- `settings:verify` checks stored keys, scopes, types and secret encryption against the declared settings. Its output contains row counts.
 - `settings:reencrypt [--dry-run]` moves rows encrypted with a previous Laravel key to the current key. Dry run counts eligible rows.
+- `settings:export` writes a JSON backup to stdout. Every secret must be readable with the current Laravel key.
+- `settings:import <file> [--dry-run]` validates a JSON backup and restores it in a single transaction on an empty `settings` table. Dry run validates the file.
+
+The backup has a top-level integer `version` of `1` and a `settings` list. Rows contain the canonical scope reference, group, key, JSON value, encryption marker, revision, metadata and UTC timestamps. Protect the file as a database backup. It contains secrets encrypted under the exporting application's `APP_KEY`.
 
 ## Storage
 

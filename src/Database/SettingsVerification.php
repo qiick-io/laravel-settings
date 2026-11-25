@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Qiick\Settings\Database;
 
+use Illuminate\Contracts\Encryption\StringEncrypter;
+use Illuminate\Encryption\Encrypter;
 use InvalidArgumentException;
 use JsonException;
 use Qiick\Settings\Config\SettingsConfig;
@@ -39,7 +41,7 @@ final readonly class SettingsVerification
     }
 
     /** @param array<array-key, Definition> $definitions */
-    public function isValid(#[SensitiveParameter] Setting $row, array $definitions): bool
+    public function isValid(#[SensitiveParameter] Setting $row, array $definitions, ?StringEncrypter $encrypter = null): bool
     {
         $definition = $definitions[$row->key] ?? null;
 
@@ -59,20 +61,36 @@ final readonly class SettingsVerification
         }
 
         if ($row->encryption === null) {
-            return $value === null || ! $definition->isSecret();
+            return $value === null
+                || (! $definition->isSecret() && $definition->accepts($definition->fromStoredValue($row->value)));
         }
 
-        if ($row->encryption !== Setting::LARAVEL_ENCRYPTION || ! is_string($value)) {
+        if (! $definition->isSecret() || $row->encryption !== Setting::LARAVEL_ENCRYPTION || ! is_string($value)) {
             return false;
         }
 
         try {
-            Secret::fromCiphertext($value)->reveal();
+            if ($encrypter === null) {
+                Secret::fromCiphertext($value)->reveal();
+            } else {
+                $encrypter->decryptString($value);
+            }
 
             return true;
         } catch (Throwable) {
             return false;
         }
+    }
+
+    public function currentEncrypter(): Encrypter
+    {
+        $cipher = config('app.cipher');
+
+        if (! is_string($cipher)) {
+            throw new InvalidArgumentException('app.cipher must name the Laravel cipher.');
+        }
+
+        return new Encrypter(app(Encrypter::class)->getKey(), $cipher);
     }
 
     public function scopeOf(#[SensitiveParameter] Setting $row): ScopeRef
