@@ -16,5 +16,6 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - Laravel-encrypted secrets with strict validation and redacted representations.
 - Request- and job-scoped settings memoization invalidated after commit.
 - Storage verification, previous-key rotation and versioned JSON backup and restore commands.
+- `SettingsUpdatedEvent` for committed group writes, with scope, group and key names.
 
 [Unreleased]: https://github.com/qiick-io/laravel-settings/compare/830363d05e59b6f113ea639bb4df1e5d9119461e...develop
