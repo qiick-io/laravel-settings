@@ -53,6 +53,10 @@ Read the group's `revision($group, $scope)` before reading its edit values. Pass
 
 Each request or job reads committed settings from the database and reuses the result for that group within the same scope. Reads inside a transaction go directly to the database. Writes invalidate the memo after the outer transaction commits. The memo holds only ciphertext for secret settings. A fresh request or job sees changes committed by other processes.
 
+## User erasure
+
+Resolve `Qiick\Settings\Erasure\SettingsEraser` from Laravel in the product's erasure orchestrator. A full erasure deletes the user's settings and clears their request or job memo after commit. An organisation-only erasure leaves global user settings intact. See the [public API](docs/public-api.md#classes) for arguments and reporting.
+
 ## Maintenance commands
 
 `settings:verify` checks declared keys, scopes and stored encryption. During key rotation, put the old key in Laravel's `APP_PREVIOUS_KEYS`. Use `settings:reencrypt --dry-run` to count rows that use a previous key, then run `settings:reencrypt` to update them.

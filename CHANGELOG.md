@@ -17,6 +17,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - Request- and job-scoped settings memoization invalidated after commit.
 - Storage verification, previous-key rotation and versioned JSON backup and restore commands.
 - `SettingsUpdatedEvent` for committed group writes, with scope, group and key names.
+- Fleet `SettingsEraser` for user-scoped rows and memo entries, with dry-run reporting.
 
 ### Fixed
 

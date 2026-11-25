@@ -16,7 +16,7 @@ use Throwable;
 /** @internal Keeps committed group values for one request or job. */
 final class SettingsGroupMemo
 {
-    /** @var array<string, Collection<array-key, Setting>> */
+    /** @var array<string, array<array-key, Collection<array-key, Setting>>> */
     private array $groups = [];
 
     public function __construct(
@@ -27,11 +27,11 @@ final class SettingsGroupMemo
     /** @return Collection<array-key, Setting> */
     public function rows(ScopeRef $scope, string $group): Collection
     {
-        $identity = $this->identity($scope, $group);
+        $identity = $this->identity($scope->scope, $scope->id);
         $isInTransaction = $this->table->connection()->transactionLevel() > 0;
 
-        if (! $isInTransaction && isset($this->groups[$identity])) {
-            return $this->groups[$identity];
+        if (! $isInTransaction && isset($this->groups[$identity][$group])) {
+            return $this->groups[$identity][$group];
         }
 
         $rows = $this->table->group($scope, $group)->get(['key', 'value', 'encryption'])->keyBy('key');
@@ -46,12 +46,22 @@ final class SettingsGroupMemo
             return $rows;
         }
 
-        return $this->groups[$identity] = $memoRows;
+        return $this->groups[$identity][$group] = $memoRows;
     }
 
     public function forget(ScopeRef $scope, string $group): void
     {
-        unset($this->groups[$this->identity($scope, $group)]);
+        unset($this->groups[$this->identity($scope->scope, $scope->id)][$group]);
+    }
+
+    public function countScope(string $scope, #[SensitiveParameter] string $id): int
+    {
+        return count($this->groups[$this->identity($scope, $id)] ?? []);
+    }
+
+    public function forgetScope(string $scope, #[SensitiveParameter] string $id): void
+    {
+        unset($this->groups[$this->identity($scope, $id)]);
     }
 
     /**
@@ -97,8 +107,8 @@ final class SettingsGroupMemo
         return true;
     }
 
-    private function identity(ScopeRef $scope, string $group): string
+    private function identity(string $scope, #[SensitiveParameter] string $id): string
     {
-        return serialize([$scope->scope, $scope->id, $group]);
+        return serialize([$scope, $id]);
     }
 }
