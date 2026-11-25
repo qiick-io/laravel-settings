@@ -42,6 +42,7 @@ beforeEach(function (): void {
         Definition::string('token')->secret(),
         Definition::string('name')->default('default name')->scopes('instance', 'user'),
         Definition::bool('enabled')->default(false)->scopes('instance', 'user'),
+        Definition::bool('two_factor_required')->default(true)->in('security'),
         Definition::int('limit')->default(5)->scopes('instance', 'user'),
         Definition::float('ratio')->default(1.0)->scopes('instance', 'user'),
         Definition::json('modules')->default(fn () => ['one'])->scopes('instance', 'user'),
@@ -94,17 +95,27 @@ it('keeps scopes isolated and restricts writes to declared keys and types', func
         ->and($settings->revision('app', $user))->toBe(1)
         ->and($settings->all('app', $user)['name'])->toBe('user name')
         ->and($settings->forEdit('app', $user))->not->toHaveKey('has_token')
-        ->and($settings->float('missing'))->toBeNull()
-        ->and($settings->array('missing'))->toBeNull()
-        ->and($settings->enum('policy', RuntimeIntegerPolicy::class))->toBeNull()
-        ->and($settings->bool('missing'))->toBeFalse()
-        ->and($settings->string('enabled'))->toBeNull()
         ->and(fn () => $settings->set(['enabled' => true, 'never_declared' => 'synthetic']))->toThrow(InvalidArgumentException::class)
         ->and(fn () => $settings->set(['footer' => 'disallowed'], $user))->toThrow(InvalidArgumentException::class)
         ->and(fn () => $settings->set(['limit' => '4']))->toThrow(InvalidArgumentException::class)
         ->and(fn () => $settings->forget('never_declared'))->toThrow(InvalidArgumentException::class)
         ->and($settings->bool('enabled'))->toBeFalse();
 });
+
+it('rejects invalid typed reads even when the setting has no stored row', function (Closure $read, string $message): void {
+    $settings = app(Settings::class);
+    expect($settings->bool('two_factor_required'))->toBeTrue()
+        ->and(fn () => $read($settings))->toThrow(InvalidArgumentException::class, $message);
+})->with([
+    'unknown security flag' => [fn (Settings $settings) => $settings->bool('two_factor_requird'), 'Setting two_factor_requird is not declared.'],
+    'unknown secret' => [fn (Settings $settings) => $settings->secret('missing'), 'Setting missing is not declared.'],
+    'wrong scope' => [fn (Settings $settings) => $settings->bool('two_factor_required', ScopeRef::of('user', '42')), 'Setting two_factor_required is not declared for scope user.'],
+    'wrong secret scope' => [fn (Settings $settings) => $settings->secret('token', ScopeRef::of('user', '42')), 'Setting token is not declared for scope user.'],
+    'wrong getter' => [fn (Settings $settings) => $settings->string('enabled'), 'Setting enabled cannot be read as string.'],
+    'wrong enum' => [fn (Settings $settings) => $settings->enum('policy', RuntimeIntegerPolicy::class), 'Setting policy cannot be read as enum.'],
+    'secret read as string' => [fn (Settings $settings) => $settings->string('token'), 'Setting token cannot be read as string.'],
+    'public setting read as secret' => [fn (Settings $settings) => $settings->secret('name'), 'Setting name cannot be read as a secret.'],
+]);
 
 it('reports mismatched database values without including the stored value', function (): void {
     $reporter = Mockery::mock(ExceptionHandler::class);
@@ -139,9 +150,6 @@ it('stores ciphertext and exposes only a presence flag for secret settings', fun
         ->and($ciphertext)->toBeString()->not->toContain($plaintext)
         ->and($secret->reveal())->toBe($plaintext)
         ->and(array_values(get_mangled_object_vars($secret)))->toBe([$ciphertext])
-        ->and($settings->string('token'))->toBeNull()
-        ->and($settings->secret('name'))->toBeNull()
-        ->and($settings->secret('token', ScopeRef::of('user', '42')))->toBeNull()
         ->and($settings->all('app'))->toHaveKey('name', 'editable')
         ->and($settings->all('app'))->not->toHaveKey('token')
         ->and($settings->all('app'))->not->toHaveKey('has_token')

@@ -25,6 +25,8 @@ Tag `SettingsSchema` implementations with `SettingsSchema::class` in the Laravel
 
 `Secret::reveal()` returns plaintext to the caller. Normal string, JSON, debugger and PHP serialization representations redact the value.
 
+`Settings` typed reads throw `InvalidArgumentException` for an undeclared key, a getter or enum class that differs from the definition, or a scope the definition does not allow. For a valid read, a missing value uses the declared default. An invalid stored non-secret value also uses the declared default and reports `SettingTypeMismatch`.
+
 `Settings::revision($group, $scope)` returns the maximum revision stored for the group in that scope. An empty group starts at zero. Writes and clears advance the revision monotonically. Pass the last revision read to `set()` when saving a group edit. A conditional write accepts one group. A stale revision raises `StaleSetting`.
 
 ## Configuration
@@ -38,7 +40,7 @@ Publish `config/settings.php` with the `settings-config` tag.
 
 ## Commands
 
-- `settings:check` validates configuration and tagged schemas, then checks for the storage tables. It exits nonzero on failure.
+- `settings:check` validates configuration and tagged schemas, the storage tables, and the complete set of lock IDs from 0 through 63. It exits nonzero on failure.
 
 ## Storage
 

@@ -35,6 +35,9 @@ final class CheckSettingsCommand extends Command
         try {
             $hasTable = Schema::hasTable(Setting::TABLE);
             $hasWriteLocks = $hasTable && Schema::hasTable(SettingsWriteLock::TABLE);
+            $lockIds = $hasWriteLocks
+                ? Schema::getConnection()->table(SettingsWriteLock::TABLE)->orderBy('id')->pluck('id')->all()
+                : [];
         } catch (PDOException) {
             $this->error('Could not inspect the settings table.');
 
@@ -49,6 +52,12 @@ final class CheckSettingsCommand extends Command
 
         if (! $hasWriteLocks) {
             $this->error('The settings write locks table is missing.');
+
+            return self::FAILURE;
+        }
+
+        if ($lockIds !== range(0, SettingsWriteLock::LAST_BUCKET)) {
+            $this->error('The settings write locks table must contain IDs 0 through '.SettingsWriteLock::LAST_BUCKET.'.');
 
             return self::FAILURE;
         }

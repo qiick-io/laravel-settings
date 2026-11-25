@@ -13,13 +13,15 @@ final class SettingsWriteLock
 {
     public const string TABLE = 'settings_write_locks';
 
+    public const int LAST_BUCKET = 63;
+
     /** @param list<string> $groups */
     public function acquire(Connection $connection, ScopeRef $scope, array $groups): void
     {
         $buckets = [];
 
         foreach ($groups as $group) {
-            $bucket = crc32(serialize([$scope->scope, $scope->id, $group])) & 63;
+            $bucket = crc32(serialize([$scope->scope, $scope->id, $group])) & self::LAST_BUCKET;
             $buckets[$bucket] = $bucket;
         }
 

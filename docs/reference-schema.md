@@ -17,7 +17,7 @@ The package identifies a setting by `(scope, scope_id, group, key)`. The bigint 
 | `metadata` | JSON | Nullable |
 | `created_at`, `updated_at` | timestamps | Nullable, UTC |
 
-`settings_scope_unique` covers the natural key. `settings_scope_group_index` covers `(scope, scope_id, group)`. MySQL and MariaDB use binary collation for the natural key. Scope IDs identify different owner types and have no foreign key.
+`settings_scope_unique` covers the natural key and its `(scope, scope_id, group)` prefix supports group lookups. MySQL and MariaDB use binary collation for the natural key. Scope IDs identify different owner types and have no foreign key.
 
 Every write assigns the next group revision to each changed key. Clearing a setting stores SQL NULL and retains its row and revision. Reads then use the declared default. The group's maximum revision advances monotonically across ordinary writes and clears.
 
