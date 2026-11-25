@@ -3,14 +3,39 @@
 declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migrator;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Qiick\Settings\Config\SettingsConfig;
 use Qiick\Settings\Laravel\SettingsServiceProvider;
 
 it('registers the settings deploy check in Artisan', function (): void {
+    $this->artisan('migrate')->assertSuccessful();
+
+    try {
+        $this->artisan('settings:check')
+            ->expectsOutput('Settings configuration and table are ready.')
+            ->assertExitCode(0);
+    } finally {
+        $this->artisan('migrate:rollback')->assertSuccessful();
+    }
+});
+
+it('reports when the settings table is missing', function (): void {
+    Schema::shouldReceive('hasTable')->with('settings')->once()->andReturnFalse();
+
     $this->artisan('settings:check')
-        ->expectsOutput('Settings configuration is valid.')
-        ->assertExitCode(0);
+        ->expectsOutput('The settings table is missing.')
+        ->assertExitCode(1);
+});
+
+it('reports a database failure without printing connection details', function (): void {
+    Schema::shouldReceive('hasTable')->with('settings')->once()
+        ->andThrow(new PDOException('synthetic connection details'));
+
+    $this->artisan('settings:check')
+        ->expectsOutput('Could not inspect the settings table.')
+        ->doesntExpectOutput('synthetic connection details')
+        ->assertExitCode(1);
 });
 
 it('loads the shipped migration option before boot', function (): void {

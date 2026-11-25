@@ -59,6 +59,7 @@ jobs:
           composer require --no-interaction --no-update \
             "illuminate/console:^${LARAVEL_MAJOR}.0" \
             "illuminate/contracts:^${LARAVEL_MAJOR}.0" \
+            "illuminate/database:^${LARAVEL_MAJOR}.0" \
             "illuminate/support:^${LARAVEL_MAJOR}.0"
           if [[ "$DEPENDENCY_VERSION" == lowest ]]; then
             composer update --no-interaction --prefer-dist --prefer-lowest --with-all-dependencies

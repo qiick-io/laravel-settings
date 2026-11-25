@@ -2,7 +2,7 @@
 
 | # | Property | Covering test | Status |
 | --- | --- | --- | --- |
-| S1 | Instance settings have a non-null scope ID and a unique natural key. | Schema step | Planned |
+| S1 | Instance settings have a non-null scope ID and a unique natural key. | `SettingsTableTest` | Covered |
 | S2 | Secrets are redacted in public payloads, logs and exceptions. The cache stores only ciphertext for secrets. | Settings and cache steps | Planned |
 | S3 | Declared secrets are encrypted at rest and verification rejects plaintext rows. | Settings and commands steps | Planned |
 | S4 | Writes reject undeclared keys and keys outside the target scope. | Settings step | Planned |
