@@ -41,6 +41,8 @@ Publish `config/settings.php` with the `settings-config` tag.
 ## Commands
 
 - `settings:check` validates configuration and tagged schemas, the storage tables, and the complete set of lock IDs from 0 through 63. It exits nonzero on failure.
+- `settings:verify` checks that rows use declared keys and scopes and that their encryption is readable. Its output contains row counts.
+- `settings:reencrypt [--dry-run]` moves rows encrypted with a previous Laravel key to the current key. Dry run counts eligible rows.
 
 ## Storage
 

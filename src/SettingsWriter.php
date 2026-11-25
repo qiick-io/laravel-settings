@@ -10,7 +10,6 @@ use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Date;
 use InvalidArgumentException;
 use JsonException;
-use OverflowException;
 use Qiick\Settings\Cache\SettingsGroupMemo;
 use Qiick\Settings\Config\SettingsConfig;
 use Qiick\Settings\Database\SettingsTable;
@@ -55,11 +54,7 @@ final readonly class SettingsWriter
                     throw new StaleSetting('The settings group revision changed.');
                 }
 
-                if ($current >= 2147483647) {
-                    throw new OverflowException('The settings group revision reached its storage limit.');
-                }
-
-                $this->write($connection, $scope, $group, $prepared[$group], $current + 1);
+                $this->write($connection, $scope, $group, $prepared[$group], SettingsTable::nextRevision($current));
             }
 
             $connection->afterCommit(function () use ($scope, $groups): void {
