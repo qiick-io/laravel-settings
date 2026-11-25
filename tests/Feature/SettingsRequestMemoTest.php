@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Cache\Events\CacheHit;
 use Illuminate\Cache\Events\CacheMissed;
 use Illuminate\Cache\Events\KeyWritten;
+use Illuminate\Contracts\Encryption\StringEncrypter;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -149,6 +150,7 @@ it('memoizes only ciphertext for secrets and clears encrypted values after commi
 });
 
 it('keeps invalid secret rows out of the memo', function (?string $encryption, string $value): void {
+    app(Settings::class)->set(['name' => 'public row before the invalid secret']);
     DB::table('settings')->insert([
         'scope' => 'instance', 'group' => 'app', 'key' => 'token', 'value' => $value, 'encryption' => $encryption,
     ]);
@@ -162,6 +164,18 @@ it('keeps invalid secret rows out of the memo', function (?string $encryption, s
     'mislabeled plaintext' => ['laravel-v1', '"synthetic plaintext"'],
     'nonstring encrypted value' => ['laravel-v1', 'false'],
 ]);
+
+it('keeps encrypted strings missing their encryption marker out of the memo', function (): void {
+    $ciphertext = app(StringEncrypter::class)->encryptString('synthetic unmarked secret');
+    DB::table('settings')->insert([
+        'scope' => 'instance', 'group' => 'app', 'key' => 'token', 'value' => json_encode($ciphertext, JSON_THROW_ON_ERROR),
+    ]);
+
+    $memo = app(SettingsGroupMemo::class);
+    $scope = ScopeRef::instance();
+    expect($memo->rows($scope, 'app'))->not->toBe($memo->rows($scope, 'app'))
+        ->and(fn () => app(Settings::class)->secret('token'))->toThrow(UndecryptableSetting::class);
+});
 
 it('keeps undeclared, misgrouped and mis-scoped stored values out of the request memo', function (string $key): void {
     DB::table('settings')->insert([
