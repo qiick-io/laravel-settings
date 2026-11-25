@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Date;
 use InvalidArgumentException;
 use JsonException;
 use OverflowException;
-use Qiick\Settings\Cache\SettingsGroupCache;
+use Qiick\Settings\Cache\SettingsGroupMemo;
 use Qiick\Settings\Config\SettingsConfig;
 use Qiick\Settings\Database\SettingsTable;
 use Qiick\Settings\Database\SettingsWriteLock;
@@ -27,7 +27,7 @@ final readonly class SettingsWriter
         private SettingsTable $table,
         private SettingsWriteLock $locks,
         private DefinitionRegistry $definitions,
-        private SettingsGroupCache $cache,
+        private SettingsGroupMemo $memo,
     ) {}
 
     /** @param array<array-key, mixed> $values */
@@ -47,11 +47,9 @@ final readonly class SettingsWriter
         $connection = $this->table->connection();
         $connection->transaction(function () use ($connection, $scope, $groups, $prepared, $expectedRevision): void {
             $this->locks->acquire($connection, $scope, $groups);
-            $invalidate = [];
 
             foreach ($groups as $group) {
-                $version = $this->table->lockedVersion($scope, $group);
-                $current = $version['revision'];
+                $current = $this->table->lockedRevision($scope, $group);
 
                 if ($expectedRevision !== null && $expectedRevision !== $current) {
                     throw new StaleSetting('The settings group revision changed.');
@@ -62,12 +60,11 @@ final readonly class SettingsWriter
                 }
 
                 $this->write($connection, $scope, $group, $prepared[$group], $current + 1);
-                $invalidate[] = ['group' => $group, 'version' => $version];
             }
 
-            $connection->afterCommit(function () use ($scope, $invalidate): void {
-                foreach ($invalidate as $changed) {
-                    $this->cache->forget($scope, $changed['group'], $changed['version']);
+            $connection->afterCommit(function () use ($scope, $groups): void {
+                foreach ($groups as $group) {
+                    $this->memo->forget($scope, $group);
                 }
             });
         }, attempts: 3);

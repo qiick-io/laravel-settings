@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Qiick\Settings;
 
 use BackedEnum;
-use Qiick\Settings\Cache\SettingsGroupCache;
+use Qiick\Settings\Cache\SettingsGroupMemo;
+use Qiick\Settings\Database\SettingsTable;
 use SensitiveParameter;
 
 /** @internal Implements the typed settings API on the application's database. */
@@ -14,7 +15,8 @@ final readonly class DatabaseSettings implements Settings
     public function __construct(
         private SettingsReader $reader,
         private SettingsWriter $writer,
-        private SettingsGroupCache $cache,
+        private SettingsTable $table,
+        private SettingsGroupMemo $memo,
     ) {}
 
     public function string(string $key, ?ScopeRef $scope = null): ?string
@@ -74,7 +76,12 @@ final readonly class DatabaseSettings implements Settings
 
     public function revision(string $group, ?ScopeRef $scope = null): int
     {
-        return $this->cache->revision($scope ?? ScopeRef::instance(), $group);
+        $scope ??= ScopeRef::instance();
+
+        // Edit values read after the revision must come from a fresh read.
+        $this->memo->forget($scope, $group);
+
+        return $this->table->revision($scope, $group);
     }
 
     public function set(#[SensitiveParameter] array $values, ?ScopeRef $scope = null, ?int $expectedRevision = null): void

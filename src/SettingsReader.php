@@ -6,7 +6,7 @@ namespace Qiick\Settings;
 
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use InvalidArgumentException;
-use Qiick\Settings\Cache\SettingsGroupCache;
+use Qiick\Settings\Cache\SettingsGroupMemo;
 use Qiick\Settings\Config\SettingsConfig;
 use Qiick\Settings\Models\Setting;
 use Qiick\Settings\Support\DefinitionRegistry;
@@ -18,7 +18,7 @@ final readonly class SettingsReader
 {
     public function __construct(
         private DefinitionRegistry $definitions,
-        private SettingsGroupCache $groups,
+        private SettingsGroupMemo $memo,
         private SettingsConfig $config,
         private ExceptionHandler $reporter,
     ) {}
@@ -69,7 +69,7 @@ final readonly class SettingsReader
     /** @return array<array-key, mixed> */
     public function group(string $group, ScopeRef $scope, bool $withSecretFlags): array
     {
-        $rows = $this->groups->rows($scope, $group);
+        $rows = $this->memo->rows($scope, $group);
         $values = [];
         $flags = [];
 
@@ -112,7 +112,7 @@ final readonly class SettingsReader
 
     private function row(ScopeRef $scope, Definition $definition): ?Setting
     {
-        return $this->groups->rows($scope, $definition->group())->get($definition->key);
+        return $this->memo->rows($scope, $definition->group())->get($definition->key);
     }
 
     private function typedValue(Definition $definition, #[SensitiveParameter] ?Setting $row): mixed

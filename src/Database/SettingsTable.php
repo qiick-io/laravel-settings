@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Qiick\Settings\Config\SettingsConfig;
 use Qiick\Settings\Models\Setting;
 use Qiick\Settings\ScopeRef;
-use RuntimeException;
 
 /** @internal Uses the same primary connection and canonical scope column for every lookup. */
 final readonly class SettingsTable
@@ -36,41 +35,9 @@ final readonly class SettingsTable
         return $this->integerRevision($this->group($scope, $group)->max('revision'));
     }
 
-    /** @return Builder<Setting> */
-    public function recentFirst(ScopeRef $scope, string $group): Builder
+    public function lockedRevision(ScopeRef $scope, string $group): int
     {
-        return $this->group($scope, $group)->orderByDesc('revision')->orderByDesc('id');
-    }
-
-    /** @return array{revision: int, identity: string} */
-    public function cacheVersion(ScopeRef $scope, string $group): array
-    {
-        return $this->versionOf($this->recentFirst($scope, $group)->first(['id', 'revision']));
-    }
-
-    /** @return array{revision: int, identity: string} */
-    public function lockedVersion(ScopeRef $scope, string $group): array
-    {
-        return $this->versionOf($this->recentFirst($scope, $group)->lockForUpdate()->first(['id', 'revision']));
-    }
-
-    /** @return array{revision: int, identity: string} */
-    public function versionOf(?Setting $row): array
-    {
-        if ($row === null) {
-            return ['revision' => 0, 'identity' => ''];
-        }
-
-        $identity = $row->getRawOriginal('id');
-
-        if (! is_int($identity) && ! is_string($identity)) {
-            throw new RuntimeException('A settings row has an invalid identity.');
-        }
-
-        return [
-            'revision' => $row->revision,
-            'identity' => (string) $identity,
-        ];
+        return $this->integerRevision($this->group($scope, $group)->lockForUpdate()->pluck('revision')->max());
     }
 
     private function integerRevision(mixed $maximum): int

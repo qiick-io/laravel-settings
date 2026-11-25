@@ -14,6 +14,6 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - Tagged application schemas with typed definitions, explicit scopes and lazy defaults.
 - Typed settings reads and transactional writes with monotonic group revisions.
 - Laravel-encrypted secrets with strict validation and redacted representations.
-- Request-scoped settings memoization and a versioned Laravel cache invalidated after commit.
+- Request- and job-scoped settings memoization invalidated after commit.
 
 [Unreleased]: https://github.com/qiick-io/laravel-settings/compare/830363d05e59b6f113ea639bb4df1e5d9119461e...develop
