@@ -35,6 +35,12 @@ final class Setting extends Model
         return parent::asDateTime($value)->utc();
     }
 
+    /** Keep whole floats distinct from integers on a JSON round trip. */
+    protected function asJson($value, $flags = JSON_PRESERVE_ZERO_FRACTION): string|false
+    {
+        return json_encode($value, $flags | JSON_PRESERVE_ZERO_FRACTION);
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {

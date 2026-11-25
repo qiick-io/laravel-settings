@@ -29,6 +29,7 @@ it('round-trips JSON values with their original type', function (mixed $value): 
     'boolean' => [false],
     'integer' => [18],
     'float' => [2.25],
+    'whole float' => [2.0],
     'ciphertext string' => ['synthetic-ciphertext'],
     'list' => [[false, 'item']],
     'object' => [['item' => 8]],
