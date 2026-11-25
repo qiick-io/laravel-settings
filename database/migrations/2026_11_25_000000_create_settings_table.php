@@ -31,7 +31,6 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['scope', 'scope_id', 'group', 'key'], 'settings_scope_unique');
-            $table->index(['scope', 'scope_id', 'group'], 'settings_scope_group_index');
         });
     }
 

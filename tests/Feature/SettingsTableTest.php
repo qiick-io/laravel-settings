@@ -19,8 +19,7 @@ it('creates the settings columns and named natural-key indexes', function (): vo
     ])
         ->and($indexes['settings_scope_unique']['unique'])->toBeTrue()
         ->and($indexes['settings_scope_unique']['columns'])->toBe(['scope', 'scope_id', 'group', 'key'])
-        ->and($indexes['settings_scope_group_index']['unique'])->toBeFalse()
-        ->and($indexes['settings_scope_group_index']['columns'])->toBe(['scope', 'scope_id', 'group']);
+        ->and($indexes)->not->toHaveKey('settings_scope_group_index');
 
     foreach (['id', 'scope', 'scope_id', 'group', 'key', 'revision'] as $column) {
         expect($columns[$column]['nullable'])->toBeFalse();
