@@ -47,6 +47,10 @@ Read the group's `revision($group, $scope)` before reading its edit values. Pass
 
 `forget()` clears the stored value and advances the revision, so subsequent reads use the default. An unconditional `set()` can update several groups in one transaction.
 
+## Cache
+
+Settings use a request- or job-scoped memo and a shared cache keyed by the committed group revision. The shared store defaults to Laravel's cache, with a 3600-second lifetime and the `settings` prefix. Writes invalidate the previous entry after commit. Reads inside a transaction and during a cache outage use the database. Shared entries hold ciphertext for secret settings. A group with an unreadable secret stays on the database read path.
+
 - [Public API and deprecation policy](docs/public-api.md)
 - [Security policy](SECURITY.md)
 - [Reference schema](docs/reference-schema.md)

@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Date;
  * @property string $key
  * @property mixed $value
  * @property string|null $encryption
+ * @property int $revision
  *
  * @internal
  */

@@ -27,6 +27,7 @@ abstract class PackageTestCase extends TestCase
 
     protected function defineEnvironment($app): void
     {
+        $app['config']->set('cache.default', 'array');
         $isCi = getenv('GITHUB_ACTIONS') === 'true';
         $usesLocalDatabase = getenv('SETTINGS_TEST_LOCAL_DATABASE') === '1';
         $connection = $isCi || $usesLocalDatabase ? getenv('DB_CONNECTION') : false;

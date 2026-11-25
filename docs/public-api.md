@@ -9,6 +9,7 @@ Laravel discovers the package's provider through Composer.
 - `Qiick\Settings\ScopeRegistry` (class)
 - `Qiick\Settings\Secret` (class)
 - `Qiick\Settings\Settings` (interface)
+- `Qiick\Settings\SettingsCache` (interface)
 - `Qiick\Settings\SettingsSchema` (interface)
 - `Qiick\Settings\SettingTypeMismatch` (class)
 - `Qiick\Settings\StaleSetting` (class)
@@ -22,6 +23,8 @@ Register a custom scope on the application's `ScopeRegistry` before passing its 
 Declare types with `Definition::bool()`, `int()`, `float()`, `string()`, `json()` or `enum()`. The fluent methods `in()`, `scopes()`, `default()` and `secret()` return a new definition. Defaults are described in the [README](../README.md#declaring-settings).
 
 Tag `SettingsSchema` implementations with `SettingsSchema::class` in the Laravel container. The combined schemas can declare a key once and must use registered scopes.
+
+Bind `SettingsCache` in the Laravel container to use a custom shared store. The package provides the key, opaque snapshot payload and lifetime in seconds. Its default implementation delegates to the configured Laravel cache store.
 
 `Secret::reveal()` returns plaintext to the caller. Normal string, JSON, debugger and PHP serialization representations redact the value.
 
@@ -37,6 +40,9 @@ Publish `config/settings.php` with the `settings-config` tag.
 - `settings.columns.scope_id` names the canonical string scope identifier column. Defaults to `scope_id`.
 - `settings.columns.legacy_scope_id` names an optional numeric identifier column to keep in sync. Defaults to `null`.
 - `settings.encryption.strict` controls whether `secret()` throws `UndecryptableSetting` on invalid ciphertext. Defaults to `true`. When false, an undecryptable secret is treated as absent.
+- `settings.cache.store` selects a Laravel cache store. The null default uses the application's default store.
+- `settings.cache.ttl` sets the shared cache lifetime in seconds. Defaults to 3600.
+- `settings.cache.prefix` namespaces shared cache entries. Defaults to `settings`.
 
 ## Commands
 
