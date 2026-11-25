@@ -15,6 +15,7 @@ use Qiick\Settings\Console\SettingsVerifyCommand;
 use Qiick\Settings\DatabaseSettings;
 use Qiick\Settings\ScopeRegistry;
 use Qiick\Settings\Settings;
+use Qiick\Settings\Support\DefinitionRegistry;
 
 /** @internal Wires the package into the Laravel application. */
 final class SettingsServiceProvider extends ServiceProvider
@@ -23,6 +24,7 @@ final class SettingsServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(dirname(__DIR__, 2).'/config/settings.php', 'settings');
         $this->app->singleton(ScopeRegistry::class);
+        $this->app->scoped(DefinitionRegistry::class);
         $this->app->scoped(Settings::class, DatabaseSettings::class);
         $this->app->scoped(SettingsGroupMemo::class);
     }

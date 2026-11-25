@@ -12,16 +12,23 @@ use Qiick\Settings\SettingsSchema;
 use Throwable;
 
 /** @internal Combines application schemas after providers have registered their scopes. */
-final readonly class DefinitionRegistry
+final class DefinitionRegistry
 {
+    /** @var array<array-key, Definition>|null */
+    private ?array $resolved = null;
+
     public function __construct(
-        private Container $container,
-        private ScopeRegistry $scopes,
+        private readonly Container $container,
+        private readonly ScopeRegistry $scopes,
     ) {}
 
     /** @return array<array-key, Definition> */
     public function definitions(): array
     {
+        if ($this->resolved !== null) {
+            return $this->resolved;
+        }
+
         $definitions = [];
 
         foreach ($this->container->tagged(SettingsSchema::class) as $schema) {
@@ -31,8 +38,8 @@ final readonly class DefinitionRegistry
 
             try {
                 $declared = $schema->definitions();
-            } catch (Throwable) {
-                throw new InvalidArgumentException('A settings schema failed to declare its definitions.');
+            } catch (Throwable $exception) {
+                throw new InvalidArgumentException('A settings schema failed to declare its definitions.', previous: $exception);
             }
 
             foreach ($declared as $definition) {
@@ -52,6 +59,6 @@ final readonly class DefinitionRegistry
             }
         }
 
-        return $definitions;
+        return $this->resolved = $definitions;
     }
 }

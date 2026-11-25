@@ -36,11 +36,17 @@ final class SettingsGroupMemo
 
         $rows = $this->table->group($scope, $group)->get(['key', 'value', 'encryption'])->keyBy('key');
 
-        if (! $isInTransaction && $this->canMemoize($rows, $scope, $group)) {
-            $this->groups[$identity] = $rows;
+        if ($isInTransaction) {
+            return $rows;
         }
 
-        return $rows;
+        $memoRows = $this->memoRows($rows, $scope, $group);
+
+        if ($memoRows === null) {
+            return $rows;
+        }
+
+        return $this->groups[$identity] = $memoRows;
     }
 
     public function forget(ScopeRef $scope, string $group): void
@@ -48,33 +54,44 @@ final class SettingsGroupMemo
         unset($this->groups[$this->identity($scope, $group)]);
     }
 
-    /** @param Collection<array-key, Setting> $rows */
-    private function canMemoize(#[SensitiveParameter] Collection $rows, ScopeRef $scope, string $group): bool
+    /**
+     * @param  Collection<array-key, Setting>  $rows
+     * @return Collection<array-key, Setting>|null
+     */
+    private function memoRows(#[SensitiveParameter] Collection $rows, ScopeRef $scope, string $group): ?Collection
     {
         $definitions = $this->definitions->definitions();
+        $memoRows = new Collection;
 
         foreach ($rows as $row) {
             $definition = $definitions[$row->key] ?? null;
 
             // An orphaned row can hold an old secret. Keep it out of the memo.
             if ($definition === null || $definition->group() !== $group || ! in_array($scope->scope, $definition->scopeNames(), true)) {
-                return false;
-            }
-
-            if (! $definition->isSecret() || $row->getRawOriginal('value') === null) {
                 continue;
             }
 
-            if ($row->encryption !== Setting::LARAVEL_ENCRYPTION || ! is_string($row->value)) {
-                return false;
+            if ($definition->isSecret() && $row->getRawOriginal('value') !== null && ! $this->isCiphertext($row)) {
+                return null;
             }
 
-            try {
-                // A marker alone does not prove that the stored value is ciphertext.
-                Secret::fromCiphertext($row->value)->reveal();
-            } catch (Throwable) {
-                return false;
-            }
+            $memoRows->put($row->key, $row);
+        }
+
+        return $memoRows;
+    }
+
+    private function isCiphertext(#[SensitiveParameter] Setting $row): bool
+    {
+        if ($row->encryption !== Setting::LARAVEL_ENCRYPTION || ! is_string($row->value)) {
+            return false;
+        }
+
+        try {
+            // A marker alone does not prove that the stored value is ciphertext.
+            Secret::fromCiphertext($row->value)->reveal();
+        } catch (Throwable) {
+            return false;
         }
 
         return true;
