@@ -1,0 +1,230 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  package-matrix:
+    uses: qiick-io/app-ui/.github/workflows/package-matrix.yml@f50f81fb01f0a68dc06ddeaea87792ef4bce8c88 # develop, PR matrix (#233)
+    with:
+      app-ui-ref: f50f81fb01f0a68dc06ddeaea87792ef4bce8c88
+
+  tests:
+    name: PHP ${{ matrix.php }} Laravel ${{ matrix.laravel }} ${{ matrix.dependency-version }}
+    needs: package-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.package-matrix.outputs.matrix) }}
+    steps:
+      - if: ${{ !matrix.skip }}
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - if: ${{ !matrix.skip }}
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_sqlite
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate composer.json
+        if: ${{ !matrix.skip }}
+        run: composer validate --strict --no-check-lock
+
+      - name: Install dependencies
+        if: ${{ !matrix.skip }}
+        env:
+          LARAVEL_MAJOR: ${{ matrix.laravel }}
+          TESTBENCH_MAJOR: ${{ matrix.testbench }}
+          DEPENDENCY_VERSION: ${{ matrix.dependency-version }}
+        run: |
+          composer require --dev --no-interaction --no-update "orchestra/testbench:^${TESTBENCH_MAJOR}.0"
+          composer require --no-interaction --no-update \
+            "illuminate/console:^${LARAVEL_MAJOR}.0" \
+            "illuminate/contracts:^${LARAVEL_MAJOR}.0" \
+            "illuminate/support:^${LARAVEL_MAJOR}.0"
+          if [[ "$DEPENDENCY_VERSION" == lowest ]]; then
+            composer update --no-interaction --prefer-dist --prefer-lowest --with-all-dependencies
+          else
+            composer update --no-interaction --prefer-dist --with-all-dependencies
+          fi
+
+      - name: Composer audit
+        if: ${{ !matrix.skip }}
+        run: composer audit --no-interaction
+
+      - name: Pest on SQLite
+        if: ${{ !matrix.skip }}
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+        run: vendor/bin/pest
+
+  lint:
+    name: Pint
+    needs: package-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - if: needs.package-matrix.outputs.docs-only != 'true'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - if: needs.package-matrix.outputs.docs-only != 'true'
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+
+      - if: needs.package-matrix.outputs.docs-only != 'true'
+        run: composer install --no-interaction --prefer-dist && composer lint
+
+  php-quality:
+    uses: qiick-io/app-ui/.github/workflows/php-quality.yml@f50f81fb01f0a68dc06ddeaea87792ef4bce8c88 # develop after v0.13.0
+    with:
+      php-version: '8.5'
+      build-command: ''
+      phpstan-min-level: max
+      coverage-thresholds: src=90
+      pest-arguments: ''
+
+  databases:
+    name: Pest on ${{ matrix.database.name }}
+    needs: package-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ${{ fromJSON(needs.package-matrix.outputs.databases) }}
+    services:
+      database:
+        image: ${{ needs.package-matrix.outputs.run-databases == 'true' && matrix.database.image || '' }}
+        env: ${{ matrix.database.environment }}
+        ports:
+          - ${{ matrix.database.port }}:${{ matrix.database.port }}
+        options: ${{ matrix.database.options }}
+    steps:
+      - if: needs.package-matrix.outputs.run-databases == 'true'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - if: needs.package-matrix.outputs.run-databases == 'true'
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          extensions: pdo_mysql, pdo_pgsql
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        if: needs.package-matrix.outputs.run-databases == 'true'
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Pest
+        if: needs.package-matrix.outputs.run-databases == 'true'
+        env:
+          DB_CONNECTION: ${{ matrix.database.connection }}
+          DB_HOST: 127.0.0.1
+          DB_PORT: ${{ matrix.database.port }}
+          DB_DATABASE: qiick_package
+          DB_USERNAME: ${{ matrix.database.username }}
+          DB_PASSWORD: ${{ matrix.database.password }}
+        run: vendor/bin/pest
+
+  mutation-shards:
+    name: Mutation (shard ${{ matrix.shard }}/4)
+    needs: package-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - if: needs.package-matrix.outputs.mutate-scope == 'all' || needs.package-matrix.outputs.mutate-classes != '[]'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - if: needs.package-matrix.outputs.mutate-scope == 'all' || needs.package-matrix.outputs.mutate-classes != '[]'
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          extensions: pdo_sqlite
+          coverage: pcov
+          tools: composer:v2
+
+      - name: Install dependencies
+        if: needs.package-matrix.outputs.mutate-scope == 'all' || needs.package-matrix.outputs.mutate-classes != '[]'
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Pest mutate per class
+        if: needs.package-matrix.outputs.mutate-scope == 'all' || needs.package-matrix.outputs.mutate-classes != '[]'
+        env:
+          MUTATE_SCOPE: ${{ needs.package-matrix.outputs.mutate-scope }}
+          MUTATE_CLASSES: ${{ needs.package-matrix.outputs.mutate-classes }}
+          MUTATE_SHARD: ${{ matrix.shard }}
+          MUTATE_SHARDS: 4
+        run: bash scripts/mutate-per-class.sh
+
+  mutation:
+    name: Mutation (per-class ≥95%)
+    needs: mutation-shards
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every shard passed
+        env:
+          SHARDS_RESULT: ${{ needs.mutation-shards.result }}
+        run: test "$SHARDS_RESULT" = success
+
+  app-ui-drift:
+    uses: qiick-io/app-ui/.github/workflows/drift-check.yml@f50f81fb01f0a68dc06ddeaea87792ef4bce8c88 # develop after v0.13.0
+    with:
+      standards: true
+      registry: false
+
+  pr-title:
+    if: github.event_name == 'pull_request'
+    uses: qiick-io/app-ui/.github/workflows/pr-title.yml@f50f81fb01f0a68dc06ddeaea87792ef4bce8c88 # develop after v0.13.0
+
+  migrations-frozen:
+    uses: qiick-io/app-ui/.github/workflows/migrations-frozen.yml@f50f81fb01f0a68dc06ddeaea87792ef4bce8c88 # develop after v0.13.0
+
+  nightly-failure:
+    needs: [package-matrix, tests, lint, php-quality, databases, mutation, app-ui-drift, migrations-frozen]
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open an issue for the failing run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Nightly CI failed on $(date -u +%F)" \
+            --body "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
