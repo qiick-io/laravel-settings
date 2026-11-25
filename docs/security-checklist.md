@@ -6,7 +6,7 @@
 | S2 | Secrets are redacted in public payloads, logs and exceptions. The cache stores only ciphertext for secrets. | Settings and cache steps | Planned |
 | S3 | Declared secrets are encrypted at rest and verification rejects plaintext rows. | Settings and commands steps | Planned |
 | S4 | Writes reject undeclared keys and keys outside the target scope. | Settings step | Planned |
-| S5 | Scope references reject unknown scopes and non-empty IDs for instance-like scopes. | Scope step | Planned |
+| S5 | Scope references reject unknown scopes and non-empty IDs for instance-like scopes. | `ScopeRefTest` | Covered |
 | S6 | Workers see committed changes made by another process. | Cache step | Planned |
 | S7 | Rollback preserves the last committed cached value. | Cache step | Planned |
 | S8 | An outdated revision prevents a lost update. | Settings step | Planned |

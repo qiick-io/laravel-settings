@@ -7,6 +7,7 @@ namespace Qiick\Settings\Laravel;
 use Illuminate\Support\ServiceProvider;
 use Qiick\Settings\Config\SettingsConfig;
 use Qiick\Settings\Console\CheckSettingsCommand;
+use Qiick\Settings\ScopeRegistry;
 
 /** @internal Wires the package into the Laravel application. */
 final class SettingsServiceProvider extends ServiceProvider
@@ -14,6 +15,7 @@ final class SettingsServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(dirname(__DIR__, 2).'/config/settings.php', 'settings');
+        $this->app->singleton(ScopeRegistry::class);
     }
 
     public function boot(SettingsConfig $config): void

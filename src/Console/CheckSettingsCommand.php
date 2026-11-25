@@ -10,6 +10,7 @@ use InvalidArgumentException;
 use PDOException;
 use Qiick\Settings\Config\SettingsConfig;
 use Qiick\Settings\Models\Setting;
+use Qiick\Settings\Support\DefinitionRegistry;
 
 /** @internal Checks package configuration and table availability before deployment. */
 final class CheckSettingsCommand extends Command
@@ -18,10 +19,11 @@ final class CheckSettingsCommand extends Command
 
     protected $description = 'Check the settings package for deployment';
 
-    public function handle(SettingsConfig $config): int
+    public function handle(SettingsConfig $config, DefinitionRegistry $definitions): int
     {
         try {
             $config->shouldLoadMigrations();
+            $definitions->definitions();
         } catch (InvalidArgumentException $exception) {
             $this->error($exception->getMessage());
 
