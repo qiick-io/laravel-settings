@@ -1,0 +1,64 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "qiick/laravel-settings",
+    "description": "Scoped, typed settings and encrypted secrets for qiick Laravel products.",
+    "type": "library",
+    "keywords": ["qiick", "laravel", "settings", "secrets"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Qiick",
+            "homepage": "https://qiick.io"
+        }
+    ],
+    "homepage": "https://github.com/qiick-io/laravel-settings",
+    "support": {
+        "issues": "https://github.com/qiick-io/laravel-settings/issues",
+        "source": "https://github.com/qiick-io/laravel-settings"
+    },
+    "require": {
+        "php": "^8.3",
+        "illuminate/console": "^12.0 || ^13.0",
+        "illuminate/contracts": "^12.0 || ^13.0",
+        "illuminate/support": "^12.0 || ^13.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.3",
+        "laravel/pint": "^1.30",
+        "nunomaduro/collision": "^8.5",
+        "orchestra/testbench": "^10.0 || ^11.0",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-mutate": "^4.0",
+        "phpstan/phpstan": "^2.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Qiick\\Settings\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Qiick\\Settings\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Qiick\\Settings\\Laravel\\SettingsServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "lint": "pint --test",
+        "analyse": "phpstan analyse --memory-limit=1G"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        },
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
