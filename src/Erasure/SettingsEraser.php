@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Qiick\Settings\Erasure;
 
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Qiick\Settings\Cache\SettingsGroupMemo;
@@ -15,7 +16,6 @@ use Qiick\Settings\Events\SubjectErasedEvent;
 use Qiick\Settings\Models\Setting;
 use RuntimeException;
 use SensitiveParameter;
-use Throwable;
 
 /** @api Erases the settings stored for one person using the fleet erasure contract. */
 final readonly class SettingsEraser
@@ -43,45 +43,45 @@ final readonly class SettingsEraser
         #[SensitiveParameter] string $mode,
         #[SensitiveParameter] array $publicIds = [],
         #[SensitiveParameter] array $identifiers = [],
-        ?string $organisationId = null,
+        #[SensitiveParameter] ?string $organisationId = null,
         bool $dryRun = false,
     ): ErasureReport {
         $this->validate($userPublicId, $mode, $publicIds, $identifiers);
+
+        if ($organisationId !== null) {
+            throw new OrganisationScopeUnsupportedException('Settings erasure does not support an organisation scope.');
+        }
 
         try {
             $connection = $this->table->connection();
             $rows = $connection->table(Setting::TABLE)->useWritePdo()
                 ->where('scope', 'user')->where($this->config->scopeIdColumn(), $userId);
-            $isFullErasure = $organisationId === null;
 
-            return $connection->transaction(function () use ($connection, $rows, $userId, $mode, $isFullErasure, $dryRun): ErasureReport {
-                if ($isFullErasure && ! $dryRun) {
+            return $connection->transaction(function () use ($connection, $rows, $userId, $mode, $dryRun): ErasureReport {
+                if ($dryRun) {
+                    $rowCount = $rows->count();
+                } else {
                     // A new group may be created after any enumeration of this user's groups.
                     $this->locks->acquireAll($connection);
                     $rowCount = $rows->delete();
-                } else {
-                    $rowCount = $rows->count();
                 }
 
                 $memoCount = $this->memo->countScope('user', $userId);
                 $report = new ErasureReport('qiick/laravel-settings', $mode, $dryRun, [
-                    'settings' => $this->counts($rowCount, $isFullErasure),
-                    'cache:settings' => $this->counts($memoCount, $isFullErasure),
+                    'settings' => $this->counts($rowCount),
+                    'cache:settings' => $this->counts($memoCount),
                 ]);
 
                 if (! $dryRun) {
-                    $connection->afterCommit(function () use ($userId, $isFullErasure, $report): void {
-                        if ($isFullErasure) {
-                            $this->memo->forgetScope('user', $userId);
-                        }
-
+                    $connection->afterCommit(function () use ($userId, $report): void {
+                        $this->memo->forgetScope('user', $userId);
                         $this->events->dispatch(new SubjectErasedEvent($report));
                     });
                 }
 
                 return $report;
             });
-        } catch (Throwable) {
+        } catch (QueryException) {
             // A database exception can include the subject's identifier in its query bindings.
             throw new RuntimeException('Could not erase user settings.');
         }
@@ -114,14 +114,14 @@ final readonly class SettingsEraser
         }
     }
 
-    /** @return array{deleted: int, anonymised: int, kept: int, reason: ?string} */
-    private function counts(int $count, bool $isFullErasure): array
+    /** @return array{deleted: int, anonymised: 0, kept: 0, reason: null} */
+    private function counts(int $count): array
     {
         return [
-            'deleted' => $isFullErasure ? $count : 0,
+            'deleted' => $count,
             'anonymised' => 0,
-            'kept' => $isFullErasure ? 0 : $count,
-            'reason' => ! $isFullErasure && $count > 0 ? 'outside_organisation_scope' : null,
+            'kept' => 0,
+            'reason' => null,
         ];
     }
 }

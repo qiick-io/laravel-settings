@@ -11,7 +11,7 @@ One answer per topic for every qiick package and product (decision of 2026-11-24
 - **F5 Events** end with `Event`, in the past tense (`WebhookSignedEvent`).
 - **F6 Commands** are `<package>:<verb>` (one namespace, kebab-case verb); every command that deletes has `--dry-run`.
 - **F7 Environment variables** a package reads carry its prefix (`HTTP_BASICS_`, `MCP_OAUTH_`).
-- **F8 Columns:** `public_id` UUID for anything that leaves the database, `metadata` JSON, `schema_version` for versioned rows, UTC timestamps, `timestamp` for past events and `dateTime` for future instants, `organisation_id` lowercase UUID, index names within 63 characters, binary collation for case-sensitive identifiers.
+- **F8 Columns:** `public_id` UUID for anything that leaves the database, `metadata` JSON, `schema_version` for versioned rows, UTC timestamps, `timestamp` for past events and `dateTime` for future instants, `organisation_id` lowercase UUID, index names within 63 characters, binary collation for case-sensitive identifiers, and an index on every foreign key.
 - **F9 Retention:** data that expires has a prune command scheduled at least daily with `onOneServer()`, deleting in chunks, with `--dry-run`.
 - **F10 Logs:** structured context with the same keys everywhere (`request_id`, `organisation_id`, `public_id`), snake_case; never personal data or secrets.
 - **F11 Errors:** one JSON error shape (`message`, `error`, optional `errors`) and one fleet registry of `error` codes in app-ui (`standards/error-codes.json`), without collisions.
@@ -19,7 +19,10 @@ One answer per topic for every qiick package and product (decision of 2026-11-24
 - **F12 Package files:** `docs/public-api.md` (with its test and the deprecation policy), `docs/security-checklist.md` mapped to tests, `docs/decisions/YYYY-MM-DD-<slug>.md`, `UPGRADING.md` per version, `CHANGELOG.md` with compare links, `docs/dependencies.md`.
 - **F13 Release order:** a package is released after the packages it depends on; a `1.x` (pre-releases included) never depends on a `0.x`, and a stable release never on a pre-release.
 - **F18 Products** share one structure: `docs/beta-readiness.md` (the fleet checklist), `<app>:install` and `<app>:upgrade`, SQLite by default in `.env.example`, tests pinned to an in-memory database, and the package adoption table.
-- **F15–F17** (repository settings, labels and project, agent rules) are in the repository rules.
+- **F25 Strict Laravel:** products boot with strict models, destructive commands prohibited and HTTPS forced in production, immutable dates and the password defaults; every PHP repo's tests stop stray HTTP requests and processes.
+- **F27 Public APIs:** an API is versioned in its path (`/api/v1`), described by a hand-written OpenAPI file that a test compares with the routes, answers errors in the F11 shape, and retires a version only after announcing it with `Deprecation` and `Sunset` headers.
+- **F28 UI quality:** a product with a UI calls the shared `ui-quality` and drift checks, and proves its screens in a browser test in light and dark.
+- **F15–F17** (repository settings, labels and project, agent rules) are in the repository rules, **F19–F24, F26, F29 and F30** (security policy, secrets, expand / contract, backup, signed tags, supply chain, observability, privacy, runbooks) in the security, data and operations rules.
 
 With a `conventions` object in `qiick-standards.json`, `app-ui-drift / standards` runs the static checks of these rules; an exception is a `conventions.divergences` entry with `reason`, `decision` and `review_by`.
 
@@ -126,12 +129,13 @@ A divergence skips its check. It fails when it lacks a field, when `review_by` h
 - An organisation reference is `organisation_id`, a UUID, stored lowercase (`Str::lower()` before writing a value that came from outside).
 - Index names stay within 63 characters (PostgreSQL truncates longer names, MySQL refuses past 64); Laravel's generated name is fine within the limit, an explicit name otherwise.
 - Identifiers compared case-sensitively (OIDC `issuer` / `subject`, external ids) use a binary collation on MySQL / MariaDB (`utf8mb4_bin`), as laravel-oidc does.
+- Every foreign key is served by an index: its columns lead an index, a unique index or the primary key of its table (in any order: `unique(['user_group_id', 'user_id'])` serves `user_group_id`, not `user_id`). `->foreignId('user_id')->index()->constrained()` is the plain form. PostgreSQL and SQLite never add that index themselves, MySQL and MariaDB do, so a migration that looks fine on MySQL leaves PostgreSQL scanning the child table on every delete or update of a parent row.
 
-**Why.** Each of these broke or was argued twice: `organization_id` and `string` organisation ids in signaculum-core, `meta` JSON columns in externa-core, `expires_at` as `TIMESTAMP` across the products, a 64-character generated index name in instituta-core, and three spellings of one id in logs and columns.
+**Why.** Each of these broke or was argued twice: `organization_id` and `string` organisation ids in signaculum-core, `meta` JSON columns in externa-core, `expires_at` as `TIMESTAMP` across the products, a 64-character generated index name in instituta-core, and three spellings of one id in logs and columns. On 2026-11-25 excubia's schema test found foreign keys without an index in laravel-access and laravel-outbound: on PostgreSQL, deleting a user or an organisation scanned and locked their child tables.
 
-**Checked by.** F8 over `database/migrations/`: `public_id` / `organisation_id` as UUID, the `organization_id` spelling, future instants as `dateTime`, `metadata` naming, generated index name length (literal table names only). Engine behaviour (collation, UUID columns on PostgreSQL and MySQL) is in the conformance suite (C1, C3, C5, C11, C12).
+**Checked by.** F8 over `database/migrations/`: `public_id` / `organisation_id` as UUID, the `organization_id` spelling, future instants as `dateTime`, `metadata` naming, generated index name length (literal table names only). Engine behaviour (collation, UUID columns on PostgreSQL and MySQL) is in the conformance suite (C1, C3, C5, C11, C12). Foreign key indexes are checked on the migrated database: in products by conformance C76 (`conformance / conformance`, PostgreSQL and MySQL), in packages by their own test that calls `SchemaInspector::foreignKeysWithoutIndex()` (from `tests/Conformance/Support/`, written once as `tests/Feature/ForeignKeyIndexTest.php`), which the package matrix runs on SQLite, MySQL, MariaDB and PostgreSQL; F8 fails a package with foreign keys and no such test.
 
-**Exceptions.** A table shaped by an upstream package (Spatie, Passport) keeps upstream's columns; a migration frozen by a stable release is never edited (`migrations-frozen.yml`): the fix is a new migration or a divergence.
+**Exceptions.** A table shaped by an upstream package (Spatie, Passport) keeps upstream's columns; a migration frozen by a stable release is never edited (`migrations-frozen.yml`): the fix is a new migration or a divergence. Such a table still gets an index on each of its foreign keys, in a new migration of the repo's own: an added index changes no column (Spatie's `role_has_permissions` leads its primary key with `permission_id`, so `role_id` needs one).
 
 ## F9 Retention
 
@@ -230,3 +234,50 @@ A divergence skips its check. It fails when it lacks a field, when `review_by` h
 **Checked by.** F18 (products): the checklist file, the two commands, `.env.example` and `phpunit.xml`. The checklist's content is reviewed in the release PR.
 
 **Exceptions.** A product without a self-hosted distribution writes ➖ with the reason in its checklist; the commands stay.
+
+## F25 Strict Laravel
+
+**Rule.** A product's `AppServiceProvider::boot()` calls:
+
+- `Model::shouldBeStrict(! app()->isProduction())`: lazy loading, silently discarded attributes and missing attributes throw outside production (the checks rules);
+- `DB::prohibitDestructiveCommands(app()->isProduction())`: no `migrate:fresh`, `db:wipe` or `migrate:reset` against production;
+- `URL::forceHttps(app()->isProduction())`: every generated URL is `https` behind a proxy that terminates TLS;
+- `Date::use(CarbonImmutable::class)`: a date passed around is never changed in place;
+- `Password::defaults(…)`: one password rule for registration, reset and the settings screen.
+
+Every PHP repo's test setup (`tests/Pest.php` or `tests/TestCase.php`) calls `Http::preventStrayRequests()` and `Process::preventStrayProcesses()`, so a test that forgot its fake fails instead of calling the network or a binary.
+
+**Why.** On 2026-11-25 the four products already did all of the boot calls but `URL::forceHttps` (only signaculum-core), from the starter kit, without a rule that keeps a new product doing them; and the testing rules forbid the network in tests, yet only externa-core enforced it with `Http::preventStrayRequests()`, and no repo stopped stray processes.
+
+**Checked by.** F25: in products, each call in `app/Providers/`; in every PHP repo, both `prevent*` calls under `tests/`.
+
+**Exceptions.** A product that never runs behind TLS (a local-only tool) writes a divergence for `URL::forceHttps`.
+
+## F27 Public APIs
+
+**Rule.** An HTTP API that clients outside the product call (REST, not the Inertia endpoints):
+
+- is versioned in its path, `/api/v1/…`; a breaking change (a removed or renamed field or route, a new required parameter, a changed type or error code) is a new version, `/api/v2`, never a change to `v1`;
+- is described by a hand-written OpenAPI 3.1 file in `resources/openapi/<api>-v<N>.yaml`, served at `/api/v<N>/openapi.json`, with a test that fails when a route in `routes/api.php` is missing from the file (`docs/api.md`);
+- answers errors in the fleet shape (F11), with named rate limiters and their `RateLimit-*` / `Retry-After` headers;
+- retires a version only after announcing it: every response of the old version carries `Deprecation` (RFC 9745) and `Sunset` (RFC 8594) headers for at least six months, the CHANGELOG and the API docs say so, and the version is removed only in a major release.
+
+**Why.** On 2026-11-25 three products had an OpenAPI file (externa-core, instituta-core, signaculum-core) and excubia-app had API routes without one; nothing said how a version ends. Clients of a self-hosted product upgrade on the operator's schedule, not ours, so an API change they cannot see coming breaks them silently.
+
+**Checked by.** F27 (_app_), when `routes/api.php` exists: a `resources/openapi/*-v<N>.yaml` or `.json` file, a test under `tests/` that reads it, and API routes under a `v<N>` prefix.
+
+**Exceptions.** An OAuth or OIDC endpoint keeps the path its RFC or discovery document gives it (`/oauth/token`, `/.well-known/…`) and its RFC error body (the F11 exception).
+
+## F28 UI quality
+
+**Rule.** A product with a UI (`uiPreset` in `qiick-standards.json`):
+
+- calls the reusable `ui-quality.yml` (theme tokens, contrast, axe smoke) and `drift-check.yml` (registry drift and the standards), with the job ids that give the required check names `ui-quality / ui-quality` and `app-ui-drift / drift`;
+- has Pest browser tests (`tests/Browser`) for the flows only a browser proves (navigation, dialogs, keyboard, focus), each run in light and dark (the testing rules);
+- copies every screen from a pattern of the UI rules; a new solution is proposed in app-ui, never designed in the product.
+
+**Why.** On 2026-11-25 externa-core, the largest UI in the fleet, did not call `ui-quality.yml`, so its theme-token and contrast regressions were found by hand; the UI rules say what the screens look like, and this convention makes the machines check that they still do.
+
+**Checked by.** F28 (_app_ with `uiPreset`): the workflows call `ui-quality.yml` and `drift-check.yml`, and `tests/Browser/` has a test.
+
+**Exceptions.** A product whose UI is only the starter kit's auth screens may write a divergence for the browser tests until it ships its first own screen.

@@ -1,0 +1,12 @@
+name: Signed release tag
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  signed-tag:
+    uses: qiick-io/app-ui/.github/workflows/signed-tag.yml@3c8b3c2c132dbcf7af86f9ab11599c780cd2a32b # develop after #225

@@ -55,7 +55,7 @@ Each request or job reads committed settings from the database and reuses the re
 
 ## User erasure
 
-Resolve `Qiick\Settings\Erasure\SettingsEraser` from Laravel in the product's erasure orchestrator. A full erasure deletes the user's settings and clears their request or job memo after commit. An organisation-only erasure leaves global user settings intact. See the [public API](docs/public-api.md#classes) for arguments and reporting.
+Resolve `Qiick\Settings\Erasure\SettingsEraser` from Laravel in the product's erasure orchestrator. A full erasure deletes the user's settings and clears their request or job memo after commit. User settings are global. Call the eraser only for full erasure requests. See the [public API](docs/public-api.md#classes) for arguments and reporting.
 
 ## Maintenance commands
 

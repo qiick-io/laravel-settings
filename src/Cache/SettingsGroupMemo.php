@@ -56,7 +56,10 @@ final class SettingsGroupMemo
 
     public function countScope(string $scope, #[SensitiveParameter] string $id): int
     {
-        return count($this->groups[$this->identity($scope, $id)] ?? []);
+        return count(array_filter(
+            $this->groups[$this->identity($scope, $id)] ?? [],
+            static fn (Collection $rows): bool => $rows->isNotEmpty(),
+        ));
     }
 
     public function forgetScope(string $scope, #[SensitiveParameter] string $id): void

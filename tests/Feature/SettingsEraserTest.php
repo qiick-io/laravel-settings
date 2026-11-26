@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Qiick\Settings\Definition;
 use Qiick\Settings\Erasure\ErasureReport;
+use Qiick\Settings\Erasure\OrganisationScopeUnsupportedException;
 use Qiick\Settings\Erasure\SettingsEraser;
 use Qiick\Settings\Events\SettingsUpdatedEvent;
 use Qiick\Settings\Events\SubjectErasedEvent;
@@ -118,7 +120,7 @@ it('deletes exactly the person’s settings and memo in either full erasure mode
     Event::assertDispatchedTimes(SubjectErasedEvent::class, 2);
 })->with(['delete', 'anonymise']);
 
-it('reports global user settings and memo as kept for an organisation-only erasure', function (): void {
+it('rejects organisation-only erasure before touching global user settings or memo', function (bool $isDryRun): void {
     $settings = app(Settings::class);
     $person = ScopeRef::of('user', '042');
     $settings->set(['name' => 'global user settings'], $person);
@@ -127,23 +129,23 @@ it('reports global user settings and memo as kept for an organisation-only erasu
     DB::enableQueryLog();
 
     try {
-        $report = app(SettingsEraser::class)->erase('042', erasedSettingsUserPublicId(), 'delete', organisationId: erasedSettingsUserPublicId());
-        $kept = ['deleted' => 0, 'anonymised' => 0, 'kept' => 1, 'reason' => 'outside_organisation_scope'];
-        expect($report->changed())->toBe(0)
-            ->and($report->stores)->toBe(['settings' => $kept, 'cache:settings' => $kept])
+        expect(fn () => app(SettingsEraser::class)->erase('042', erasedSettingsUserPublicId(), 'delete', organisationId: erasedSettingsUserPublicId(), dryRun: $isDryRun))
+            ->toThrow(OrganisationScopeUnsupportedException::class, 'Settings erasure does not support an organisation scope.')
             ->and($settings->string('name', $person))->toBe('global user settings')
-            ->and(DB::getQueryLog())->toHaveCount(1);
+            ->and(DB::getQueryLog())->toBe([]);
     } finally {
         DB::disableQueryLog();
         DB::flushQueryLog();
     }
 
-    Event::assertDispatchedTimes(SubjectErasedEvent::class, 1);
-});
+    Event::assertNotDispatched(SubjectErasedEvent::class);
+})->with([false, true]);
 
-it('dispatches a zero report for a person with no settings or memo', function (): void {
+it('dispatches a zero report when the only memo entry is an empty group', function (): void {
     Event::fake([SubjectErasedEvent::class]);
-    $report = app(SettingsEraser::class)->erase('042', erasedSettingsUserPublicId(), 'delete', organisationId: erasedSettingsUserPublicId());
+    $settings = app(Settings::class);
+    expect($settings->string('name', ScopeRef::of('user', '042')))->toBeNull();
+    $report = app(SettingsEraser::class)->erase('042', erasedSettingsUserPublicId(), 'delete');
     $empty = ['deleted' => 0, 'anonymised' => 0, 'kept' => 0, 'reason' => null];
     expect($report->changed())->toBe(0)->and($report->stores)->toBe(['settings' => $empty, 'cache:settings' => $empty]);
     Event::assertDispatchedTimes(SubjectErasedEvent::class, 1);
@@ -184,7 +186,7 @@ it('clears memo and dispatches only after a caller’s transaction commits', fun
     expect($seen)->toBe([[0, null, 2]]);
 });
 
-it('rolls back a failed delete and keeps personal data out of the exception', function (): void {
+it('rolls back a failed delete and keeps personal data out of the query exception', function (): void {
     $settings = app(Settings::class);
     $person = ScopeRef::of('user', '042');
     $settings->set(['name' => 'synthetic personal value'], $person);
@@ -192,7 +194,7 @@ it('rolls back a failed delete and keeps personal data out of the exception', fu
     Event::fake([SubjectErasedEvent::class]);
     DB::listen(function (QueryExecuted $query): void {
         if (str_starts_with($query->sql, 'delete from') && str_contains($query->sql, 'settings')) {
-            throw new RuntimeException('synthetic personal value');
+            throw new QueryException('settings', $query->sql, $query->bindings, new RuntimeException('synthetic personal value'));
         }
     });
 

@@ -131,7 +131,7 @@ One answer per topic for every qiick package and product (decision of 2026-11-24
 - **F5 Events** end with `Event`, in the past tense (`WebhookSignedEvent`).
 - **F6 Commands** are `<package>:<verb>` (one namespace, kebab-case verb); every command that deletes has `--dry-run`.
 - **F7 Environment variables** a package reads carry its prefix (`HTTP_BASICS_`, `MCP_OAUTH_`).
-- **F8 Columns:** `public_id` UUID for anything that leaves the database, `metadata` JSON, `schema_version` for versioned rows, UTC timestamps, `timestamp` for past events and `dateTime` for future instants, `organisation_id` lowercase UUID, index names within 63 characters, binary collation for case-sensitive identifiers.
+- **F8 Columns:** `public_id` UUID for anything that leaves the database, `metadata` JSON, `schema_version` for versioned rows, UTC timestamps, `timestamp` for past events and `dateTime` for future instants, `organisation_id` lowercase UUID, index names within 63 characters, binary collation for case-sensitive identifiers, and an index on every foreign key.
 - **F9 Retention:** data that expires has a prune command scheduled at least daily with `onOneServer()`, deleting in chunks, with `--dry-run`.
 - **F10 Logs:** structured context with the same keys everywhere (`request_id`, `organisation_id`, `public_id`), snake_case; never personal data or secrets.
 - **F11 Errors:** one JSON error shape (`message`, `error`, optional `errors`) and one fleet registry of `error` codes in app-ui (`standards/error-codes.json`), without collisions.
@@ -139,11 +139,23 @@ One answer per topic for every qiick package and product (decision of 2026-11-24
 - **F12 Package files:** `docs/public-api.md` (with its test and the deprecation policy), `docs/security-checklist.md` mapped to tests, `docs/decisions/YYYY-MM-DD-<slug>.md`, `UPGRADING.md` per version, `CHANGELOG.md` with compare links, `docs/dependencies.md`.
 - **F13 Release order:** a package is released after the packages it depends on; a `1.x` (pre-releases included) never depends on a `0.x`, and a stable release never on a pre-release.
 - **F18 Products** share one structure: `docs/beta-readiness.md` (the fleet checklist), `<app>:install` and `<app>:upgrade`, SQLite by default in `.env.example`, tests pinned to an in-memory database, and the package adoption table.
-- **F15–F17** (repository settings, labels and project, agent rules) are in the repository rules.
+- **F25 Strict Laravel:** products boot with strict models, destructive commands prohibited and HTTPS forced in production, immutable dates and the password defaults; every PHP repo's tests stop stray HTTP requests and processes.
+- **F27 Public APIs:** an API is versioned in its path (`/api/v1`), described by a hand-written OpenAPI file that a test compares with the routes, answers errors in the F11 shape, and retires a version only after announcing it with `Deprecation` and `Sunset` headers.
+- **F28 UI quality:** a product with a UI calls the shared `ui-quality` and drift checks, and proves its screens in a browser test in light and dark.
+- **F15–F17** (repository settings, labels and project, agent rules) are in the repository rules, **F19–F24, F26, F29 and F30** (security policy, secrets, expand / contract, backup, signed tags, supply chain, observability, privacy, runbooks) in the security, data and operations rules.
 
 With a `conventions` object in `qiick-standards.json`, `app-ui-drift / standards` runs the static checks of these rules; an exception is a `conventions.divergences` entry with `reason`, `decision` and `review_by`.
 
-**Details:** `.qiick/standards/conventions.md`. Read it before adding or changing a package's config, commands, events, migrations, logging, error codes, retention, test fakes, docs files or Composer requirements, preparing a release, changing a product's install or beta checklist, or writing down an exception to a fleet convention.
+**Details:** `.qiick/standards/conventions.md`. Read it before adding or changing a package's config, commands, events, migrations, logging, error codes, retention, test fakes, docs files or Composer requirements, preparing a release, changing a product's install or beta checklist, changing the app's service providers or test setup, an HTTP API or a product's UI checks, or writing down an exception to a fleet convention.
+
+## Personal data erasure
+
+GDPR erasure across qiick packages and products: one eraser of the same shape in every package that holds personal data, and one resumable orchestrator in each product. There is no shared interface package. A formal interface may be added later, but only additively. Binding decision: `knowledge/decisions/2026-11-24-fleet-erasure-and-cimd` (the maintainer, 2026-11-24).
+
+- **Packages:** `final class Qiick\<Package>\Erasure\<Package>Eraser` with `erase(string $userId, string $userPublicId, string $mode, array $publicIds = [], array $identifiers = [], ?string $organisationId = null, bool $dryRun = false): ErasureReport`. It must be idempotent, use one transaction per package, never delete the user row, and put no personal data in reports, events, logs or exception messages. The suite in `tests/Erasure/`, synced once the package sets `"erasure": true`, proves E1–E14.
+- **Products:** user deletion goes only through the erasure orchestrator, which writes a resumable `erasure_requests` row first and runs the erasers in the standard order. The fleet conformance check C17 proves it. Nothing else calls an eraser or `PrincipalDirectory::eraseUser()`.
+
+**Details:** `.qiick/standards/erasure.md`. Read it before writing or changing an eraser, a package store that holds personal data, a user deletion path, the erasure orchestrator or tests/Erasure.
 
 ## Dependency register
 
@@ -197,6 +209,24 @@ Every qiick repo is configured the same way, so a check name, a label or a merge
 
 **Details:** `.qiick/standards/repository.md`. Read it before changing repository settings, branch protection, labels or a workflow's `uses:` pins, or writing agent instructions for a repo.
 
+## Security, data and operations
+
+What every qiick repo does so a vulnerability can be reported, a leaked secret replaced, a schema changed without downtime, the data restored, a release and its dependencies trusted, a running product watched, personal data accounted for, and an incident handled from a page instead of from memory (fleet conventions F19–F24, F26, F29 and F30, maintainer request of 2026-11-25; F25, F27 and F28 are code conventions, in the conventions rules).
+
+- **F19 Security policy:** every repo has a `SECURITY.md` (supported versions, how to report, response time) and GitHub private vulnerability reporting switched on, because the policy sends reporters there.
+- **F20 Secrets runbook:** every product has `docs/runbooks/secrets.md`: each secret of `.env.example` and each key file, where it lives, who rotates it, how, what the rotation breaks, and what to do after a leak.
+- **F21 Expand / contract:** after the first stable release a schema change never breaks the code of the release before it. Add first (expand), move the data, switch the code, and drop or rename only in a later release (contract), with a `contract:` comment naming the release that stopped using the column.
+- **F22 Backup and restore drill:** every product documents what is backed up and how to restore it in `docs/runbooks/backup.md`, and records a restore drill there before its first stable release and at least every quarter after it.
+- **F23 Signed release tags:** the maintainer creates release tags locally with `git tag -s`; the release workflow runs `signed-tag / verified`, which fails unless GitHub shows the tag as Verified, and every publishing job needs it.
+- **F24 Supply chain:** lock files committed in products; `composer audit` and `npm audit --omit=dev --audit-level=high` on every PR and every night; Dependabot for Composer, npm and GitHub Actions; every accepted advisory written down with a reason and a date; release artefacts (Docker images, archives) carry a build provenance attestation.
+- **F26 Observability with Excubia:** every product requires `qiick/excubia-core` (not `--dev`), keeps an `excubia.json`, schedules `excubia:check` daily, and serves `/health/live` and `/health/ready`; pushing to an `excubia-app` is the operator's choice, configured only through `EXCUBIA_APP_URL` and `EXCUBIA_APP_TOKEN`.
+- **F29 Privacy:** every product keeps `docs/privacy.md`: the personal data it stores (table and column), why, for how long, which processors and outbound destinations receive any of it, and how a person's data is exported and erased. No telemetry, ever, unless the operator turns it on.
+- **F30 Runbooks:** every product keeps `docs/runbooks/deploy.md` (deploy, upgrade and rollback) and `docs/runbooks/incident.md` (first steps, who to tell, what to write down afterwards), next to the secrets and backup runbooks.
+
+With a `conventions` object in `qiick-standards.json`, the standards drift check runs the static checks of F19, F20, F22–F24, F26, F29 and F30; `migrations-frozen / migrations-frozen` checks F21; `scripts/check-repo-settings.mjs` in app-ui checks that private vulnerability reporting is on. An exception is a `conventions.divergences` entry like any other convention.
+
+**Details:** `.qiick/standards/operations.md`. Read it before writing or changing SECURITY.md, a secret, a runbook, a migration that drops, renames or changes a column or table, a backup, a release tag or release workflow, a dependency or an audit exception, monitoring or health endpoints, or anything that stores or sends personal data.
+
 ## Releases: never without the maintainer
 
 `develop` is the integration branch. `main` holds releases only.
@@ -213,7 +243,7 @@ Agents must not, unless the maintainer explicitly says so in this conversation:
 - publish packages (Packagist, npm) or images (Docker Hub, GHCR);
 - change repository visibility.
 
-How a release goes, for reference: release PR → the maintainer merges it with a **merge commit** (never squash: `main` must stay an ancestor of `develop`) → tag `vX.Y.Z` on the merge commit → GitHub Release titled exactly with the tag, listing the included PRs → `main` is merged back into `develop` through a pull request, also with a merge commit.
+How a release goes, for reference: release PR → the maintainer merges it with a **merge commit** (never squash: `main` must stay an ancestor of `develop`) → the maintainer signs the tag `vX.Y.Z` on the merge commit on their own machine (`git tag -s`) and pushes it, and `signed-tag / verified` confirms GitHub shows it Verified (F23) → GitHub Release titled exactly with the tag, listing the included PRs → `main` is merged back into `develop` through a pull request, also with a merge commit.
 
 **Details:** `.qiick/standards/release.md`. Read it before preparing a release PR or the CHANGELOG, bumping a version, or asking for required checks.
 

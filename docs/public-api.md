@@ -6,6 +6,7 @@ Laravel discovers the package's provider through Composer.
 
 - `Qiick\Settings\Definition` (class)
 - `Qiick\Settings\Erasure\ErasureReport` (class)
+- `Qiick\Settings\Erasure\OrganisationScopeUnsupportedException` (class)
 - `Qiick\Settings\Erasure\SettingsEraser` (class)
 - `Qiick\Settings\Events\SettingsUpdatedEvent` (class)
 - `Qiick\Settings\Events\SubjectErasedEvent` (class)
@@ -35,7 +36,7 @@ Tag `SettingsSchema` implementations with `SettingsSchema::class` in the Laravel
 
 `set()` and `forget()` dispatch one `SettingsUpdatedEvent` per changed group after the outer transaction commits. The event carries the scope, group and written key names. Listeners read settings through the typed API if they need the new values.
 
-`SettingsEraser::erase($userId, $userPublicId, $mode, $publicIds = [], $identifiers = [], $organisationId = null, $dryRun = false)` accepts the fleet erasure arguments. Both `delete` and `anonymise` delete user settings matched by their canonical string scope ID. An organisation-only run reports global user settings and their memo as outside its scope. A dry run returns the counts without modifying either store. A real run forgets the user's `cache:settings` memo after the outer commit and dispatches one `SubjectErasedEvent` containing only the counts and reason codes in `ErasureReport`.
+`SettingsEraser::erase($userId, $userPublicId, $mode, $publicIds = [], $identifiers = [], $organisationId = null, $dryRun = false)` accepts the fleet erasure arguments. Both `delete` and `anonymise` delete user settings matched by their canonical string scope ID. Passing an organisation ID raises `OrganisationScopeUnsupportedException`, including in dry runs. A dry run returns the counts without modifying either store. A real run forgets the user's `cache:settings` memo after the outer commit and dispatches one `SubjectErasedEvent` containing only the counts and reason codes in `ErasureReport`.
 
 ## Configuration
 
