@@ -5,7 +5,11 @@
 Laravel discovers the package's provider through Composer.
 
 - `Qiick\Settings\Definition` (class)
+- `Qiick\Settings\Erasure\ErasureReport` (class)
+- `Qiick\Settings\Erasure\OrganisationScopeUnsupportedException` (class)
+- `Qiick\Settings\Erasure\SettingsEraser` (class)
 - `Qiick\Settings\Events\SettingsUpdatedEvent` (class)
+- `Qiick\Settings\Events\SubjectErasedEvent` (class)
 - `Qiick\Settings\ScopeRef` (class)
 - `Qiick\Settings\ScopeRegistry` (class)
 - `Qiick\Settings\Secret` (class)
@@ -31,6 +35,8 @@ Tag `SettingsSchema` implementations with `SettingsSchema::class` in the Laravel
 `Settings::revision($group, $scope)` returns the maximum revision stored for the group in that scope. An empty group starts at zero. Writes and clears advance the revision monotonically. Pass the last revision read to `set()` when saving a group edit. A conditional write accepts one group. A stale revision raises `StaleSetting`.
 
 `set()` and `forget()` dispatch one `SettingsUpdatedEvent` per changed group after the outer transaction commits. The event carries the scope, group and written key names. Listeners read settings through the typed API if they need the new values.
+
+`SettingsEraser::erase($userId, $userPublicId, $mode, $publicIds = [], $identifiers = [], $organisationId = null, $dryRun = false)` accepts the fleet erasure arguments. Both `delete` and `anonymise` delete user settings matched by their canonical string scope ID. Passing an organisation ID raises `OrganisationScopeUnsupportedException`, including in dry runs. A dry run returns the counts without modifying either store. A real run forgets the user's `cache:settings` memo after the outer commit and dispatches one `SubjectErasedEvent` containing only the counts and reason codes in `ErasureReport`.
 
 ## Configuration
 

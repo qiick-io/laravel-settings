@@ -154,6 +154,28 @@ jobs:
           DB_PASSWORD: ${{ matrix.database.password }}
         run: vendor/bin/pest
 
+  erasure:
+    name: Erasure (E1–E14)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          extensions: pdo_sqlite
+          coverage: none
+          tools: composer:v2
+
+      - run: composer install --no-interaction --prefer-dist
+      - run: node tests/Erasure/run.mjs
+
   mutation-shards:
     name: Mutation (shard ${{ matrix.shard }}/4)
     needs: package-matrix
@@ -203,7 +225,7 @@ jobs:
         run: test "$SHARDS_RESULT" = success
 
   app-ui-drift:
-    uses: qiick-io/app-ui/.github/workflows/drift-check.yml@f50f81fb01f0a68dc06ddeaea87792ef4bce8c88 # develop after v0.13.0
+    uses: qiick-io/app-ui/.github/workflows/drift-check.yml@3c8b3c2c132dbcf7af86f9ab11599c780cd2a32b # develop after #225
     with:
       standards: true
       registry: false
@@ -216,7 +238,7 @@ jobs:
     uses: qiick-io/app-ui/.github/workflows/migrations-frozen.yml@f50f81fb01f0a68dc06ddeaea87792ef4bce8c88 # develop after v0.13.0
 
   nightly-failure:
-    needs: [package-matrix, tests, lint, php-quality, databases, mutation, app-ui-drift, migrations-frozen]
+    needs: [package-matrix, tests, lint, php-quality, databases, erasure, mutation, app-ui-drift, migrations-frozen]
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 5
