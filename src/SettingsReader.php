@@ -11,7 +11,6 @@ use Qiick\Settings\Config\SettingsConfig;
 use Qiick\Settings\Models\Setting;
 use Qiick\Settings\Support\DefinitionRegistry;
 use SensitiveParameter;
-use TypeError;
 
 /** @internal Resolves stored values and defaults without exposing secret settings. */
 final readonly class SettingsReader
@@ -121,16 +120,7 @@ final readonly class SettingsReader
             return $definition->defaultValue();
         }
 
-        $value = $row->value;
-        $enum = $definition->enumClass;
-
-        if ($enum !== null && (is_int($value) || is_string($value))) {
-            try {
-                $value = $enum::tryFrom($value);
-            } catch (TypeError) {
-                $value = null;
-            }
-        }
+        $value = $definition->fromStoredValue($row->value);
 
         if ($row->encryption !== null || ! $definition->accepts($value)) {
             $this->reporter->report(new SettingTypeMismatch("Stored setting {$definition->key} does not match its declared type."));

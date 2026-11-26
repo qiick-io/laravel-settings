@@ -8,6 +8,10 @@ use Illuminate\Support\ServiceProvider;
 use Qiick\Settings\Cache\SettingsGroupMemo;
 use Qiick\Settings\Config\SettingsConfig;
 use Qiick\Settings\Console\CheckSettingsCommand;
+use Qiick\Settings\Console\SettingsExportCommand;
+use Qiick\Settings\Console\SettingsImportCommand;
+use Qiick\Settings\Console\SettingsReencryptCommand;
+use Qiick\Settings\Console\SettingsVerifyCommand;
 use Qiick\Settings\DatabaseSettings;
 use Qiick\Settings\ScopeRegistry;
 use Qiick\Settings\Settings;
@@ -35,6 +39,12 @@ final class SettingsServiceProvider extends ServiceProvider
             dirname(__DIR__, 2).'/config/settings.php' => config_path('settings.php'),
         ], 'settings-config');
 
-        $this->commands([CheckSettingsCommand::class]);
+        $this->commands([
+            CheckSettingsCommand::class,
+            SettingsVerifyCommand::class,
+            SettingsReencryptCommand::class,
+            SettingsExportCommand::class,
+            SettingsImportCommand::class,
+        ]);
     }
 }
