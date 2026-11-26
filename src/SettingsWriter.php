@@ -6,6 +6,7 @@ namespace Qiick\Settings;
 
 use BackedEnum;
 use Illuminate\Contracts\Encryption\StringEncrypter;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Date;
 use InvalidArgumentException;
@@ -14,6 +15,7 @@ use Qiick\Settings\Cache\SettingsGroupMemo;
 use Qiick\Settings\Config\SettingsConfig;
 use Qiick\Settings\Database\SettingsTable;
 use Qiick\Settings\Database\SettingsWriteLock;
+use Qiick\Settings\Events\SettingsUpdatedEvent;
 use Qiick\Settings\Models\Setting;
 use Qiick\Settings\Support\DefinitionRegistry;
 use SensitiveParameter;
@@ -27,6 +29,7 @@ final readonly class SettingsWriter
         private SettingsWriteLock $locks,
         private DefinitionRegistry $definitions,
         private SettingsGroupMemo $memo,
+        private Dispatcher $events,
     ) {}
 
     /** @param array<array-key, mixed> $values */
@@ -46,6 +49,7 @@ final readonly class SettingsWriter
         $connection = $this->table->connection();
         $connection->transaction(function () use ($connection, $scope, $groups, $prepared, $expectedRevision): void {
             $this->locks->acquire($connection, $scope, $groups);
+            $updates = [];
 
             foreach ($groups as $group) {
                 $current = $this->table->lockedRevision($scope, $group);
@@ -55,11 +59,16 @@ final readonly class SettingsWriter
                 }
 
                 $this->write($connection, $scope, $group, $prepared[$group], SettingsTable::nextRevision($current));
+                $updates[] = new SettingsUpdatedEvent($scope, $group, array_column($prepared[$group], 'key'));
             }
 
-            $connection->afterCommit(function () use ($scope, $groups): void {
-                foreach ($groups as $group) {
-                    $this->memo->forget($scope, $group);
+            $connection->afterCommit(function () use ($updates): void {
+                foreach ($updates as $update) {
+                    $this->memo->forget($update->scope, $update->group);
+                }
+
+                foreach ($updates as $update) {
+                    $this->events->dispatch($update);
                 }
             });
         }, attempts: 3);

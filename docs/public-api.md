@@ -5,6 +5,7 @@
 Laravel discovers the package's provider through Composer.
 
 - `Qiick\Settings\Definition` (class)
+- `Qiick\Settings\Events\SettingsUpdatedEvent` (class)
 - `Qiick\Settings\ScopeRef` (class)
 - `Qiick\Settings\ScopeRegistry` (class)
 - `Qiick\Settings\Secret` (class)
@@ -28,6 +29,8 @@ Tag `SettingsSchema` implementations with `SettingsSchema::class` in the Laravel
 `Settings` typed reads throw `InvalidArgumentException` for an undeclared key, a getter or enum class that differs from the definition, or a scope the definition does not allow. For a valid read, a missing value uses the declared default. An invalid stored non-secret value also uses the declared default and reports `SettingTypeMismatch`.
 
 `Settings::revision($group, $scope)` returns the maximum revision stored for the group in that scope. An empty group starts at zero. Writes and clears advance the revision monotonically. Pass the last revision read to `set()` when saving a group edit. A conditional write accepts one group. A stale revision raises `StaleSetting`.
+
+`set()` and `forget()` dispatch one `SettingsUpdatedEvent` per changed group after the outer transaction commits. The event carries the scope, group and written key names. Listeners read settings through the typed API if they need the new values.
 
 ## Configuration
 

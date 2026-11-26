@@ -43,6 +43,8 @@ Resolve `Qiick\Settings\Settings` from the Laravel container. Typed reads use th
 
 Typed reads throw `InvalidArgumentException` for an undeclared key, a type or enum mismatch, or a scope the definition does not allow. When a stored non-secret value fails validation, the reader reports `SettingTypeMismatch` and returns the declared default.
 
+After a `set()` or `forget()` commits, `SettingsUpdatedEvent` carries the scope, group and changed key names.
+
 Read the group's `revision($group, $scope)` before reading its edit values. Pass that revision as `expectedRevision` to `set()` when saving. A conditional write targets one group and throws `StaleSetting` if another write changed its revision. The revision is monotonic across writes and clears. An empty group starts at zero.
 
 `forget()` clears the stored value and advances the revision, so subsequent reads use the default. An unconditional `set()` can update several groups in one transaction.
