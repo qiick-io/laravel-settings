@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Qiick\Settings\Laravel;
 
 use Illuminate\Support\ServiceProvider;
+use Qiick\Settings\Cache\SettingsGroupMemo;
 use Qiick\Settings\Config\SettingsConfig;
 use Qiick\Settings\Console\CheckSettingsCommand;
 use Qiick\Settings\DatabaseSettings;
@@ -19,6 +20,7 @@ final class SettingsServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(dirname(__DIR__, 2).'/config/settings.php', 'settings');
         $this->app->singleton(ScopeRegistry::class);
         $this->app->scoped(Settings::class, DatabaseSettings::class);
+        $this->app->scoped(SettingsGroupMemo::class);
     }
 
     public function boot(SettingsConfig $config): void

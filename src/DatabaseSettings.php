@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Qiick\Settings;
 
 use BackedEnum;
+use Qiick\Settings\Cache\SettingsGroupMemo;
 use Qiick\Settings\Database\SettingsTable;
 use SensitiveParameter;
 
@@ -15,6 +16,7 @@ final readonly class DatabaseSettings implements Settings
         private SettingsReader $reader,
         private SettingsWriter $writer,
         private SettingsTable $table,
+        private SettingsGroupMemo $memo,
     ) {}
 
     public function string(string $key, ?ScopeRef $scope = null): ?string
@@ -74,7 +76,12 @@ final readonly class DatabaseSettings implements Settings
 
     public function revision(string $group, ?ScopeRef $scope = null): int
     {
-        return $this->table->revision($scope ?? ScopeRef::instance(), $group);
+        $scope ??= ScopeRef::instance();
+
+        // Edit values read after the revision must come from a fresh read.
+        $this->memo->forget($scope, $group);
+
+        return $this->table->revision($scope, $group);
     }
 
     public function set(#[SensitiveParameter] array $values, ?ScopeRef $scope = null, ?int $expectedRevision = null): void

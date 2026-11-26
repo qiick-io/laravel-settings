@@ -132,7 +132,9 @@ it('reports mismatched database values without including the stored value', func
 
     expect($settings->int('limit'))->toBe(5)
         ->and($settings->enum('policy', RuntimePasswordPolicy::class))->toBe(RuntimePasswordPolicy::Optional);
-    DB::table('settings')->where('key', 'policy')->update(['value' => '1']);
+    DB::table('settings')->where('key', 'policy')->update(['value' => '1', 'revision' => 2]);
+    app()->forgetScopedInstances();
+    $settings = app(Settings::class);
     expect($settings->enum('policy', RuntimePasswordPolicy::class))->toBe(RuntimePasswordPolicy::Optional)
         ->and($settings->bool('enabled'))->toBeFalse();
 });

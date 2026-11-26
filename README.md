@@ -47,6 +47,10 @@ Read the group's `revision($group, $scope)` before reading its edit values. Pass
 
 `forget()` clears the stored value and advances the revision, so subsequent reads use the default. An unconditional `set()` can update several groups in one transaction.
 
+## Request and job memoization
+
+Each request or job reads committed settings from the database and reuses the result for that group within the same scope. Reads inside a transaction go directly to the database. Writes invalidate the memo after the outer transaction commits. The memo holds only ciphertext for secret settings. A fresh request or job sees changes committed by other processes.
+
 - [Public API and deprecation policy](docs/public-api.md)
 - [Security policy](SECURITY.md)
 - [Reference schema](docs/reference-schema.md)
