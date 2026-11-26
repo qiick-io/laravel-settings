@@ -177,13 +177,28 @@ it('keeps encrypted strings missing their encryption marker out of the memo', fu
         ->and(fn () => app(Settings::class)->secret('token'))->toThrow(UndecryptableSetting::class);
 });
 
-it('keeps undeclared, misgrouped and mis-scoped stored values out of the request memo', function (string $key): void {
+it('memoizes declared values once despite undeclared, misgrouped or mis-scoped rows', function (string $key): void {
+    $scope = ScopeRef::of('user', '42');
+    $settings = app(Settings::class);
+    $settings->set(['name' => 'kept'], $scope);
     DB::table('settings')->insert([
         'scope' => 'user', 'scope_id' => '42', 'group' => 'app', 'key' => $key, 'value' => '"synthetic ignored value"',
     ]);
+    DB::enableQueryLog();
 
-    $memo = app(SettingsGroupMemo::class);
-    $scope = ScopeRef::of('user', '42');
-    expect(app(Settings::class)->all('app', $scope))->toBe(['name' => null])
-        ->and($memo->rows($scope, 'app'))->not->toBe($memo->rows($scope, 'app'));
+    try {
+        for ($index = 0; $index < 5; $index++) {
+            expect($settings->string('name', $scope))->toBe('kept');
+        }
+
+        expect(DB::getQueryLog())->toHaveCount(1)
+            ->and($settings->all('app', $scope))->toBe(['name' => 'kept']);
+        $memo = app(SettingsGroupMemo::class);
+        $rows = $memo->rows($scope, 'app');
+        expect($rows->keys()->all())->toBe(['name'])
+            ->and(serialize($rows))->not->toContain('synthetic ignored value');
+    } finally {
+        DB::disableQueryLog();
+        DB::flushQueryLog();
+    }
 })->with(['undeclared', 'footer', 'token']);

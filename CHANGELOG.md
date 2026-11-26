@@ -18,4 +18,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - Storage verification, previous-key rotation and versioned JSON backup and restore commands.
 - `SettingsUpdatedEvent` for committed group writes, with scope, group and key names.
 
+### Fixed
+
+- Resolve tagged schemas once per request or job and preserve the cause of schema failures.
+- Memoize declared values in groups that contain orphaned settings rows.
+
 [Unreleased]: https://github.com/qiick-io/laravel-settings/compare/830363d05e59b6f113ea639bb4df1e5d9119461e...develop

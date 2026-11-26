@@ -22,6 +22,28 @@ it('collects definitions from every tagged schema in the application', function 
     ]);
 });
 
+it('resolves tagged schemas once per scope and refreshes them for the next request or job', function (): void {
+    $builds = 0;
+    $this->app->bind('transient-schema', function () use (&$builds): ArraySettingsSchema {
+        $builds++;
+
+        return new ArraySettingsSchema([Definition::int('limit')->default($builds)]);
+    });
+    $this->app->tag('transient-schema', SettingsSchema::class);
+
+    $registry = $this->app->make(DefinitionRegistry::class);
+    expect($registry->definitions()['limit']->defaultValue())->toBe(1)
+        ->and($registry->definitions()['limit']->defaultValue())->toBe(1)
+        ->and($this->app->make(DefinitionRegistry::class))->toBe($registry)
+        ->and($builds)->toBe(1);
+
+    $this->app->forgetScopedInstances();
+    $nextRegistry = $this->app->make(DefinitionRegistry::class);
+    expect($nextRegistry)->not->toBe($registry)
+        ->and($nextRegistry->definitions()['limit']->defaultValue())->toBe(2)
+        ->and($builds)->toBe(2);
+});
+
 it('rejects duplicate setting keys across groups and schemas', function (): void {
     $first = Mockery::mock(SettingsSchema::class);
     $second = Mockery::mock(SettingsSchema::class);
@@ -56,6 +78,26 @@ it('does not expose a product exception message in the deploy check output', fun
         ->expectsOutput('A settings schema failed to declare its definitions.')
         ->doesntExpectOutput('synthetic private configuration')
         ->assertExitCode(1);
+});
+
+it('preserves a failed schema’s cause and retries the schema on the next resolution', function (): void {
+    $cause = new RuntimeException('synthetic schema error');
+    $schema = Mockery::mock(SettingsSchema::class);
+    $schema->shouldReceive('definitions')->once()->andThrow($cause);
+    $schema->shouldReceive('definitions')->once()->andReturn([Definition::string('available')]);
+    $this->app->instance('recoverable-schema', $schema);
+    $this->app->tag('recoverable-schema', SettingsSchema::class);
+    $registry = $this->app->make(DefinitionRegistry::class);
+
+    try {
+        $registry->definitions();
+        test()->fail('Schema resolution must throw the typed error.');
+    } catch (InvalidArgumentException $exception) {
+        expect($exception->getMessage())->toBe('A settings schema failed to declare its definitions.')
+            ->and($exception->getPrevious())->toBe($cause);
+    }
+
+    expect($registry->definitions())->toHaveKey('available');
 });
 
 it('rejects services and definitions that do not implement the schema contract', function (mixed $service, string $message): void {
