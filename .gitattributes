@@ -1,0 +1,27 @@
+# Dist archive: Packagist installs get runtime sources plus LICENSE, README and
+# CHANGELOG. Contributor tooling, tests and standards stay in the git checkout.
+
+* text=auto eol=lf
+
+*.md diff=markdown
+*.php diff=php
+
+/.cursor                export-ignore
+/.github                export-ignore
+/.gitattributes         export-ignore
+/.gitignore             export-ignore
+/.qiick                 export-ignore
+/AGENTS.md              export-ignore
+/CLAUDE.md              export-ignore
+/CONTRIBUTING.md        export-ignore
+/SECURITY.md            export-ignore
+/UPGRADING.md           export-ignore
+/composer.lock          export-ignore
+/docs                   export-ignore
+/phpstan-bootstrap.php  export-ignore
+/phpstan.neon           export-ignore
+/phpunit.xml            export-ignore
+/pint.json              export-ignore
+/qiick-standards.json   export-ignore
+/scripts                export-ignore
+/tests                  export-ignore

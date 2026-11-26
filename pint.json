@@ -1,0 +1,5 @@
+{
+    "preset": "laravel",
+    "exclude": ["tests/Conformance", "tests/Erasure/Support"],
+    "notPath": ["tests/Erasure/ErasureConformanceTest.php", "tests/Feature/ForeignKeyIndexTest.php"]
+}

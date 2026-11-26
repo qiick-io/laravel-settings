@@ -1,0 +1,66 @@
+# Public API
+
+## Classes
+
+Laravel discovers the package's provider through Composer.
+
+- `Qiick\Settings\Definition` (class)
+- `Qiick\Settings\Erasure\ErasureReport` (class)
+- `Qiick\Settings\Erasure\OrganisationScopeUnsupportedException` (class)
+- `Qiick\Settings\Erasure\SettingsEraser` (class)
+- `Qiick\Settings\Events\SettingsUpdatedEvent` (class)
+- `Qiick\Settings\Events\SubjectErasedEvent` (class)
+- `Qiick\Settings\ScopeRef` (class)
+- `Qiick\Settings\ScopeRegistry` (class)
+- `Qiick\Settings\Secret` (class)
+- `Qiick\Settings\Settings` (interface)
+- `Qiick\Settings\SettingsSchema` (interface)
+- `Qiick\Settings\SettingTypeMismatch` (class)
+- `Qiick\Settings\StaleSetting` (class)
+- `Qiick\Settings\UndecryptableSetting` (class)
+- `Qiick\Settings\Testing\ArraySettingsSchema` (class)
+
+`ScopeRef` exposes its scope name and identifier as readonly strings. Use `instance()` for instance settings, `organisation($uuid)` for an organisation, and `user($user)` for a user. An organisation UUID is normalized to lowercase.
+
+Register a custom scope on the application's `ScopeRegistry` before passing its name to `ScopeRef::of()`. An instance-like scope uses the empty identifier. Other identifiers must fit in the 36-character scope ID column. Scope names and identifiers exclude trailing spaces to preserve identity across database engines.
+
+Declare types with `Definition::bool()`, `int()`, `float()`, `string()`, `json()` or `enum()`. The fluent methods `in()`, `scopes()`, `default()` and `secret()` return a new definition. Defaults are described in the [README](../README.md#declaring-settings).
+
+Tag `SettingsSchema` implementations with `SettingsSchema::class` in the Laravel container. The combined schemas can declare a key once and must use registered scopes.
+
+`Secret::reveal()` returns plaintext to the caller. Normal string, JSON, debugger and PHP serialization representations redact the value.
+
+`Settings` typed reads throw `InvalidArgumentException` for an undeclared key, a getter or enum class that differs from the definition, or a scope the definition does not allow. For a valid read, a missing value uses the declared default. An invalid stored non-secret value also uses the declared default and reports `SettingTypeMismatch`.
+
+`Settings::revision($group, $scope)` returns the maximum revision stored for the group in that scope. An empty group starts at zero. Writes and clears advance the revision monotonically. Pass the last revision read to `set()` when saving a group edit. A conditional write accepts one group. A stale revision raises `StaleSetting`.
+
+`set()` and `forget()` dispatch one `SettingsUpdatedEvent` per changed group after the outer transaction commits. The event carries the scope, group and written key names. Listeners read settings through the typed API if they need the new values.
+
+`SettingsEraser::erase($userId, $userPublicId, $mode, $publicIds = [], $identifiers = [], $organisationId = null, $dryRun = false)` accepts the fleet erasure arguments. Both `delete` and `anonymise` delete user settings matched by their canonical string scope ID. Passing an organisation ID raises `OrganisationScopeUnsupportedException`, including in dry runs. A dry run returns the counts without modifying either store. A real run forgets the user's `cache:settings` memo after the outer commit and dispatches one `SubjectErasedEvent` containing only the counts and reason codes in `ErasureReport`.
+
+## Configuration
+
+Publish `config/settings.php` with the `settings-config` tag.
+
+- `settings.migrations.load` controls whether Laravel discovers the package migrations. Defaults to `true`.
+- `settings.columns.scope_id` names the canonical string scope identifier column. Defaults to `scope_id`.
+- `settings.columns.legacy_scope_id` names an optional numeric identifier column to keep in sync. Defaults to `null`.
+- `settings.encryption.strict` controls whether `secret()` throws `UndecryptableSetting` on invalid ciphertext. Defaults to `true`. When false, an undecryptable secret is treated as absent.
+
+## Commands
+
+- `settings:check` validates configuration and tagged schemas, the storage tables, and the complete set of lock IDs from 0 through 63. It exits nonzero on failure.
+- `settings:verify` checks stored keys, scopes, types and secret encryption against the declared settings. Its output contains row counts.
+- `settings:reencrypt [--dry-run]` moves rows encrypted with a previous Laravel key to the current key. Dry run counts eligible rows.
+- `settings:export` writes a JSON backup to stdout, including in quiet mode. Every secret must be readable with the current Laravel key. An undeclared key prevents export and the command identifies its storage row by ID.
+- `settings:import <file> [--dry-run]` validates a JSON backup and restores it in a single transaction on an empty `settings` table. Dry run validates the file.
+
+The backup has a top-level integer `version` of `1` and a `settings` list. Rows contain the canonical scope reference, group, key, JSON value, encryption marker, revision, metadata and UTC timestamps. Protect the file as a database backup. It contains secrets encrypted under the exporting application's `APP_KEY`.
+
+## Storage
+
+When `settings.migrations.load` is enabled, the package creates the `settings` and `settings_write_locks` tables. See the [reference schema](reference-schema.md).
+
+## Deprecation policy
+
+Starting with 1.0.0, public APIs are versioned using Semantic Versioning. A deprecation in a minor release includes a migration path in the upgrade guide and changelog. The deprecated API remains available until the next major release. Classes marked `@internal` may change as the implementation evolves.
