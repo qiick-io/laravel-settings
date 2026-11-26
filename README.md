@@ -2,11 +2,20 @@
 
 Scoped, typed settings and encrypted secrets for qiick Laravel products.
 
-The package is under development. It provides the `settings` table, Laravel package discovery, publishable configuration and the `settings:check` deploy command.
+`0.1.0-beta.1` is the first beta. Public APIs and the storage schema can change before 1.0.0. See the [upgrade guide](UPGRADING.md) before adopting it in a product with existing settings.
 
 ## Requirements
 
 PHP 8.3 or later in the 8.x series, and Laravel 12 or 13.
+
+## Installation
+
+Install the beta from the GitHub repository in your Laravel application.
+
+```bash
+composer config repositories.qiick-settings vcs https://github.com/qiick-io/laravel-settings.git
+composer require qiick/laravel-settings:0.1.0-beta.1
+```
 
 ## Configuration
 
