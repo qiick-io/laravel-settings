@@ -36,6 +36,10 @@ final readonly class SettingsArchive
         $rows = [];
 
         foreach (Setting::query()->useWritePdo()->orderBy('id')->cursor() as $row) {
+            if (! isset($definitions[$row->key])) {
+                throw new OrphanedSettingException($row->id);
+            }
+
             $this->verifyForTransfer($row, $definitions, $current);
             $scope = $this->verification->scopeOf($row);
             $rows[] = [

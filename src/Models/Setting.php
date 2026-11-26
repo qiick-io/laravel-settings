@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Date;
 /**
  * Stores JSON values or ciphertext without interpreting the declared setting type.
  *
+ * @property int $id
  * @property string $key
  * @property string $scope
  * @property string $group

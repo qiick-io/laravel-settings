@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Qiick\Settings\Console;
 
 use Illuminate\Console\Command;
+use Qiick\Settings\Database\OrphanedSettingException;
 use Qiick\Settings\Database\SettingsArchive;
 use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
@@ -20,13 +21,17 @@ final class SettingsExportCommand extends Command
     {
         try {
             $json = $archive->export();
+        } catch (OrphanedSettingException $exception) {
+            $this->error($exception->getMessage());
+
+            return self::FAILURE;
         } catch (Throwable) {
             $this->error('Could not export the settings store.');
 
             return self::FAILURE;
         }
 
-        $this->output->writeln($json, OutputInterface::OUTPUT_RAW);
+        $this->output->writeln($json, OutputInterface::OUTPUT_RAW | OutputInterface::VERBOSITY_QUIET);
 
         return self::SUCCESS;
     }

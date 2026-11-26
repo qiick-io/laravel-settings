@@ -13,6 +13,7 @@ use Qiick\Settings\ScopeRegistry;
 use Qiick\Settings\Settings;
 use Qiick\Settings\SettingsSchema;
 use Qiick\Settings\Testing\ArraySettingsSchema;
+use Symfony\Component\Console\Output\BufferedOutput;
 
 uses(DatabaseMigrations::class);
 
@@ -122,6 +123,29 @@ it('validates a dry run and refuses to overwrite an existing settings table', fu
     } finally {
         unlink($file);
     }
+});
+
+it('writes the full backup document even in quiet mode', function (): void {
+    app(Settings::class)->set(['name' => 'stored value']);
+    $output = new BufferedOutput;
+
+    expect(Artisan::call('settings:export', ['--quiet' => true], $output))->toBe(0);
+    $document = json_decode($output->fetch(), true, flags: JSON_THROW_ON_ERROR);
+    expect($document['version'])->toBe(1)
+        ->and($document['settings'][0]['value'])->toBe('stored value');
+});
+
+it('diagnoses the first orphaned row without printing its key, scope identity or contents', function (): void {
+    app(Settings::class)->set(['name' => 'kept']);
+    $rowId = DB::table('settings')->insertGetId([
+        'scope' => 'user', 'scope_id' => 'synthetic-private-id', 'group' => 'app',
+        'key' => 'synthetic-retired-key', 'value' => '"synthetic plaintext"',
+    ]);
+
+    $this->artisan('settings:export')
+        ->expectsOutput("Cannot export settings row {$rowId} because its key is no longer declared.")
+        ->doesntExpectOutputToContain('synthetic')
+        ->assertExitCode(1);
 });
 
 it('validates every archived row before writing', function (array $changes): void {
