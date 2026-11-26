@@ -12,5 +12,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - The internal Eloquent setting model and table availability in `settings:check`.
 - Settings scope references for the instance, organisations, users and application-registered scopes.
 - Tagged application schemas with typed definitions, explicit scopes and lazy defaults.
+- Typed settings reads and transactional writes with monotonic group revisions.
+- Laravel-encrypted secrets with strict validation and redacted representations.
 
 [Unreleased]: https://github.com/qiick-io/laravel-settings/compare/830363d05e59b6f113ea639bb4df1e5d9119461e...develop

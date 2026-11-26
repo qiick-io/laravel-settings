@@ -7,7 +7,12 @@ Laravel discovers the package's provider through Composer.
 - `Qiick\Settings\Definition` (class)
 - `Qiick\Settings\ScopeRef` (class)
 - `Qiick\Settings\ScopeRegistry` (class)
+- `Qiick\Settings\Secret` (class)
+- `Qiick\Settings\Settings` (interface)
 - `Qiick\Settings\SettingsSchema` (interface)
+- `Qiick\Settings\SettingTypeMismatch` (class)
+- `Qiick\Settings\StaleSetting` (class)
+- `Qiick\Settings\UndecryptableSetting` (class)
 - `Qiick\Settings\Testing\ArraySettingsSchema` (class)
 
 `ScopeRef` exposes its scope name and identifier as readonly strings. Use `instance()` for instance settings, `organisation($uuid)` for an organisation, and `user($user)` for a user. An organisation UUID is normalized to lowercase.
@@ -18,19 +23,28 @@ Declare types with `Definition::bool()`, `int()`, `float()`, `string()`, `json()
 
 Tag `SettingsSchema` implementations with `SettingsSchema::class` in the Laravel container. The combined schemas can declare a key once and must use registered scopes.
 
+`Secret::reveal()` returns plaintext to the caller. Normal string, JSON, debugger and PHP serialization representations redact the value.
+
+`Settings` typed reads throw `InvalidArgumentException` for an undeclared key, a getter or enum class that differs from the definition, or a scope the definition does not allow. For a valid read, a missing value uses the declared default. An invalid stored non-secret value also uses the declared default and reports `SettingTypeMismatch`.
+
+`Settings::revision($group, $scope)` returns the maximum revision stored for the group in that scope. An empty group starts at zero. Writes and clears advance the revision monotonically. Pass the last revision read to `set()` when saving a group edit. A conditional write accepts one group. A stale revision raises `StaleSetting`.
+
 ## Configuration
 
 Publish `config/settings.php` with the `settings-config` tag.
 
 - `settings.migrations.load` controls whether Laravel discovers the package migrations. Defaults to `true`.
+- `settings.columns.scope_id` names the canonical string scope identifier column. Defaults to `scope_id`.
+- `settings.columns.legacy_scope_id` names an optional numeric identifier column to keep in sync. Defaults to `null`.
+- `settings.encryption.strict` controls whether `secret()` throws `UndecryptableSetting` on invalid ciphertext. Defaults to `true`. When false, an undecryptable secret is treated as absent.
 
 ## Commands
 
-- `settings:check` validates configuration and tagged schemas, then checks that the `settings` table can be inspected. It exits nonzero on failure.
+- `settings:check` validates configuration and tagged schemas, the storage tables, and the complete set of lock IDs from 0 through 63. It exits nonzero on failure.
 
 ## Storage
 
-The package creates the `settings` table when `settings.migrations.load` is enabled. Each setting has a unique natural key of `scope`, `scope_id`, `group` and `key`. The internal Eloquent model handles the stored JSON and stays outside the public API.
+When `settings.migrations.load` is enabled, the package creates the `settings` and `settings_write_locks` tables. See the [reference schema](reference-schema.md).
 
 ## Deprecation policy
 

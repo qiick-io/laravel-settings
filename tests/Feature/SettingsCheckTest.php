@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migrator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Qiick\Settings\Config\SettingsConfig;
@@ -25,8 +26,40 @@ it('reports when the settings table is missing', function (): void {
 
     $this->artisan('settings:check')
         ->expectsOutput('The settings table is missing.')
+        ->doesntExpectOutput('The settings write locks table is missing.')
         ->assertExitCode(1);
 });
+
+it('reports when the write locks table is missing', function (): void {
+    Schema::shouldReceive('hasTable')->with('settings')->once()->andReturnTrue();
+    Schema::shouldReceive('hasTable')->with('settings_write_locks')->once()->andReturnFalse();
+
+    $this->artisan('settings:check')
+        ->expectsOutput('The settings write locks table is missing.')
+        ->assertExitCode(1);
+});
+
+it('rejects an incomplete set of write lock rows at deploy time', function (string $case): void {
+    $this->artisan('migrate')->assertSuccessful();
+
+    try {
+        $locks = DB::table('settings_write_locks');
+
+        if ($case !== 'extra row') {
+            $locks->where('id', 12)->delete();
+        }
+
+        if ($case !== 'missing row') {
+            $locks->insert(['id' => 64]);
+        }
+
+        $this->artisan('settings:check')
+            ->expectsOutput('The settings write locks table must contain IDs 0 through 63.')
+            ->assertExitCode(1);
+    } finally {
+        $this->artisan('migrate:rollback')->assertSuccessful();
+    }
+})->with(['missing row', 'wrong ID', 'extra row']);
 
 it('reports a database failure without printing connection details', function (): void {
     Schema::shouldReceive('hasTable')->with('settings')->once()
