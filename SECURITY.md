@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-The package is under development. Security fixes land on `develop` until the first stable release.
+Security fixes land on `develop` and ship in the next `0.1.0-beta.*`; older betas are not patched, so upgrade to the latest. From `1.0.0` the supported lines are listed here.
 
 ## Reporting a vulnerability
 

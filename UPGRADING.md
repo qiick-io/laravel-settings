@@ -4,9 +4,9 @@ Public APIs can change during the 0.x pre-releases. Review the notes for the ver
 
 Before the first stable release, schema changes can update a table's original create migration. Read the upgrade notes for each pre-release to see whether it requires recreating the database. After 1.0.0, released migrations are immutable.
 
-## 0.1.0-beta.1 to the release candidate
+## 0.1.0-beta.1 to 0.1.0-beta.2
 
-No public API, configuration or schema change since `0.1.0-beta.1`: an application on the beta needs no database refresh. Install from Packagist (`composer require qiick/laravel-settings:^0.1@beta`) and remove the `repositories.qiick-settings` VCS entry the first beta needed.
+No public API, configuration or schema change since `0.1.0-beta.1`: an application on the beta needs no database refresh. Install from Packagist (`composer require qiick/laravel-settings:^0.1@beta`, which resolves `0.1.0-beta.2`) and remove the `repositories.qiick-settings` VCS entry the first beta needed.
 
 Wire `Qiick\Settings\Erasure\SettingsEraser` into the product's erasure orchestrator for full user erasures (see the README). Products that keep their own settings storage until adoption move it to the package before the stable release.
 
