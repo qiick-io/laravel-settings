@@ -4,6 +4,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+### Changed
+
+- The README has the qiick banner, a threat model and Packagist install instructions, and `docs/standards-traceability.md` maps the design's standards to the code and tests.
+
 ## [0.1.0-beta.1] - 2026-11-26
 
 First beta of `qiick/laravel-settings`. Public APIs and schema can change before 1.0.0.
