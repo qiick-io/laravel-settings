@@ -58,7 +58,8 @@ while IFS= read -r file; do
   echo "::group::Mutate $file"
   output=$(mktemp)
   # PSR-4 and the public API test enforce one declaration per file.
-  if ! vendor/bin/pest --mutate --min=95 --path="$file" --ignore-min-score-on-zero-mutations | tee "$output"; then
+  # PEST_BINARY lets tests/Feature/MutationGateScriptTest.php stand in for pest.
+  if ! "${PEST_BINARY:-vendor/bin/pest}" --mutate --min=95 --path="$file" --ignore-min-score-on-zero-mutations | tee "$output"; then
     failed=1
   fi
 
