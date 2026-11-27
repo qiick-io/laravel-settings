@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-label="laravel-settings: Settings core for Laravel products">
+<title>laravel-settings: Settings core for Laravel products</title>
+<rect width="1280" height="320" rx="24" fill="#0E171E"/>
+<rect x="0.5" y="0.5" width="1279" height="319" rx="23.5" fill="none" stroke="#24343D"/>
+<g transform="translate(-14.6 10.4) scale(0.6)"><path fill="#EBF3F6" d="M131.64 198.35A82.48 82.48 0 1 1 296.6 198.35A82.48 82.48 0 1 1 131.64 198.35ZM166.88 198.35A47.25 47.25 0 1 0 261.37 198.35A47.25 47.25 0 1 0 166.88 198.35ZM261.37 118.27H296.6V323.27A25.62 25.62 0 0 0 322.23 348.9H351.05L386.29 384.13H322.23A60.86 60.86 0 0 1 261.37 323.27Z"/></g>
+<text x="1216" y="62" text-anchor="end" font-family="'Geist Mono', 'SFMono-Regular', Menlo, Consolas, monospace" font-size="18" fill="#7F939C">qiick-io/laravel-settings</text>
+<text x="268" y="168" font-family="Geist, 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif" font-size="64" font-weight="650" letter-spacing="-1.5" fill="#EBF3F6">laravel-settings</text>
+<text x="270" y="212" font-family="Geist, 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif" font-size="24" fill="#A9BAC2">Settings core for Laravel products</text>
+<text x="270" y="252" font-family="'Geist Mono', 'SFMono-Regular', Menlo, Consolas, monospace" font-size="17" fill="#41B0BC">typed settings · encrypted secrets · scopes · key rotation</text>
+</svg>
