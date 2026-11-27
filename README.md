@@ -1,5 +1,9 @@
 # Laravel Settings
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/qiick-io/laravel-settings/badge)](https://scorecard.dev/viewer/?uri=github.com/qiick-io/laravel-settings)
+
+PHPStan at `max` and the existing CI checks cover PHP. CodeQL covers GitHub Actions and JavaScript/TypeScript.
+
 Scoped, typed settings and encrypted secrets for qiick Laravel products.
 
 `0.1.0-beta.1` is the first beta. Public APIs and the storage schema can change before 1.0.0. See the [upgrade guide](UPGRADING.md) before adopting it in a product with existing settings.
