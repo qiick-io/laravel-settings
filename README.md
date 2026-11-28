@@ -1,8 +1,20 @@
-# Laravel Settings
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/header-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset=".github/assets/header-light.svg">
+    <img alt="laravel-settings: Settings core for Laravel products" src=".github/assets/header-light.svg" width="100%">
+  </picture>
+</p>
+
+# qiick/laravel-settings
+
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/qiick-io/laravel-settings/badge)](https://scorecard.dev/viewer/?uri=github.com/qiick-io/laravel-settings)
+
+PHPStan at `max` and the existing CI checks cover PHP. CodeQL covers GitHub Actions and JavaScript/TypeScript.
 
 Scoped, typed settings and encrypted secrets for qiick Laravel products.
 
-`0.1.0-beta.1` is the first beta. Public APIs and the storage schema can change before 1.0.0. See the [upgrade guide](UPGRADING.md) before adopting it in a product with existing settings.
+> **Pre-release.** `0.1.0-beta.2` is on Packagist for qiick products. Public APIs and the storage schema can change before 1.0.0. See the [upgrade guide](UPGRADING.md) before adopting it in a product with existing settings.
 
 ## Requirements
 
@@ -10,11 +22,10 @@ PHP 8.3 or later in the 8.x series, and Laravel 12 or 13.
 
 ## Installation
 
-Install the beta from the GitHub repository in your Laravel application.
+Install the beta from Packagist in your Laravel application.
 
 ```bash
-composer config repositories.qiick-settings vcs https://github.com/qiick-io/laravel-settings.git
-composer require qiick/laravel-settings:0.1.0-beta.1
+composer require qiick/laravel-settings:^0.1@beta
 ```
 
 ## Configuration
@@ -77,6 +88,30 @@ php artisan settings:import settings.json
 ```
 
 The JSON export contains ciphertext bound to the current `APP_KEY`. Treat it as a database backup and protect it accordingly. Use the same key and declared schema when restoring. The import validates the entire file before writing and restores revision, metadata and timestamps in one transaction on an empty `settings` table. Dry run validates the file without changing storage.
+
+## Threat model
+
+**Assets.** Product configuration that changes security behaviour (two-factor requirements, password policy, alert routing) and the secrets stored next to it (OIDC client secrets, webhook and API credentials).
+
+**Trust boundaries.** Values written through `Settings::set()` come from product code, often from an admin form: the package treats the key, scope and value as untrusted and validates them against the declared schema. The product decides who may edit which scope (its Policies). The application's `APP_KEY` and database credentials are trusted.
+
+| Threat | Control | Checklist |
+| --- | --- | --- |
+| Duplicate instance rows through a `NULL` scope ID | `scope_id` is never null; unique natural key (scope, scope ID, group, key) with case-sensitive identity on every engine | S1 |
+| A secret leaks into a page, log, exception or memo | `forEdit()` exposes `has_<key>` only; `Secret` redacts every representation; the memo holds ciphertext | S2 |
+| A declared secret is stored in plaintext | writes encrypt (`encryption = laravel-v1`); `settings:verify` fails on a plaintext row | S3 |
+| Mass assignment of arbitrary keys | writes refuse undeclared keys and keys outside the definition's scopes | S4 |
+| Scope confusion | unregistered scopes and non-empty IDs for instance-like scopes are refused; authorization stays in the product Policy | S5 |
+| Stale security settings in workers | per-request or per-job memo, refreshed from committed data | S6 |
+| A rolled-back write poisons the memo | the memo is invalidated after the outer commit only | S7 |
+| Lost update between two admins | group revision with `expectedRevision`, and 64 ordered write-lock buckets (`crc32` of scope, ID and group) that serialise writers even before a group's first row exists | S8, `SettingsWriteRaceTest` |
+| Key rotation breaks secrets | `APP_PREVIOUS_KEYS` keeps them readable; `settings:reencrypt` moves rows under the group lock | S9 |
+| An undecryptable secret enables a default (fail open) | strict mode throws `UndecryptableSetting`; non-strict reads it as absent | S10 |
+| A partial write or restore | multi-group writes, archive imports and the eraser each run in one transaction; an import validates the whole file before writing | `SettingsRuntimeTest`, `SettingsArchiveTest` |
+
+**Out of scope, owned by the product.** Authorization of who edits which scope, environment-variable fallbacks for secrets, protection of `settings:export` files (they hold ciphertext bound to `APP_KEY`), database backups, and the `APP_KEY` itself: anyone holding it and the database can read every secret.
+
+How each design standard is met: [docs/standards-traceability.md](docs/standards-traceability.md).
 
 - [Public API and deprecation policy](docs/public-api.md)
 - [Security policy](SECURITY.md)

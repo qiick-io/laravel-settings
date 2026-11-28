@@ -24,6 +24,21 @@ case "${MUTATE_SCOPE:-all}" in
     ;;
 esac
 
+# Files where pest creates no mutant, and why. Any other file must create
+# mutants and reach 95%, so a mis-pathed class or one whose logic moved out of
+# reach of the mutator fails instead of passing with no mutant at all.
+# src/Testing/ is excluded above: test fakes for products (fleet convention F14).
+no_mutant_files=(
+  src/Erasure/OrganisationScopeUnsupportedException.php # exception with a fixed message
+  src/Events/SettingsUpdatedEvent.php # readonly event payload
+  src/Events/SubjectErasedEvent.php # readonly event payload
+  src/Settings.php # interface
+  src/SettingsSchema.php # interface
+  src/SettingTypeMismatch.php # exception with a fixed message
+  src/StaleSetting.php # exception with a fixed message
+  src/UndecryptableSetting.php # exception with a fixed message
+)
+
 shard=${MUTATE_SHARD:-1}
 shards=${MUTATE_SHARDS:-1}
 position=0
@@ -41,12 +56,38 @@ while IFS= read -r file; do
   fi
 
   echo "::group::Mutate $file"
-  # PSR-4 and the public API test enforce one declaration per file. A pure
-  # interface or an enum with no executable code can yield zero mutations.
-  if ! vendor/bin/pest --mutate --min=95 --path="$file" --ignore-min-score-on-zero-mutations; then
+  output=$(mktemp)
+  # PSR-4 and the public API test enforce one declaration per file.
+  # PEST_BINARY lets tests/Feature/MutationGateScriptTest.php stand in for pest.
+  if ! "${PEST_BINARY:-vendor/bin/pest}" --mutate --min=95 --path="$file" --ignore-min-score-on-zero-mutations | tee "$output"; then
     failed=1
   fi
+
+  is_listed=false
+  for no_mutant_file in "${no_mutant_files[@]}"; do
+    if [[ "$no_mutant_file" == "$file" ]]; then
+      is_listed=true
+    fi
+  done
+
+  # Match pest's own summary line only. A failing MutationGateScriptTest prints
+  # its source (which quotes the stub string "No mutations created") into the
+  # same tee'd output; a bare substring grep would false-positive every class.
+  plain=$(sed $'s/\x1b\\[[0-9;]*m//g' "$output")
+  if printf '%s\n' "$plain" | grep -qE '^[[:space:]]*INFO[[:space:]]+No mutations created\.?[[:space:]]*$'; then
+    if [[ "$is_listed" == false ]]; then
+      echo "::error::$file creates no mutant: list it in no_mutant_files with the reason, or fix its path."
+      failed=1
+    fi
+  elif [[ "$is_listed" == true ]]; then
+    echo "::error::$file now creates mutants: remove it from no_mutant_files."
+    failed=1
+  fi
+
+  rm -f "$output"
   echo "::endgroup::"
+
+
 done <<< "$files"
 
 exit "$failed"

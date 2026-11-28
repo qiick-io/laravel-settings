@@ -4,6 +4,20 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+## [0.1.0-beta.2] - 2026-11-27
+
+Release candidate contract for 1.0. No public API, configuration or schema change since `0.1.0-beta.1`.
+
+### Upgrade notes
+
+- No database refresh. Install from Packagist and drop the VCS repository entry the first beta needed; see [UPGRADING.md](UPGRADING.md#010-beta1-to-010-beta2).
+
+### Changed
+
+- Fleet security checks in CI.
+- The mutation gate lists the files where pest creates no mutant, with the reason, and fails on any other file without mutants.
+- The README has the qiick banner, a threat model and Packagist install instructions, and `docs/standards-traceability.md` maps the design's standards to the code and tests.
+
 ## [0.1.0-beta.1] - 2026-11-26
 
 First beta of `qiick/laravel-settings`. Public APIs and schema can change before 1.0.0.
@@ -34,5 +48,6 @@ First beta of `qiick/laravel-settings`. Public APIs and schema can change before
 - Resolve tagged schemas once per request or job and preserve the cause of schema failures.
 - Memoize declared values in groups that contain orphaned settings rows.
 
-[Unreleased]: https://github.com/qiick-io/laravel-settings/compare/v0.1.0-beta.1...develop
+[Unreleased]: https://github.com/qiick-io/laravel-settings/compare/v0.1.0-beta.2...develop
+[0.1.0-beta.2]: https://github.com/qiick-io/laravel-settings/compare/v0.1.0-beta.1...v0.1.0-beta.2
 [0.1.0-beta.1]: https://github.com/qiick-io/laravel-settings/compare/830363d05e59b6f113ea639bb4df1e5d9119461e...v0.1.0-beta.1
