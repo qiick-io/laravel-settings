@@ -32,7 +32,7 @@ jobs:
       matrix: ${{ fromJSON(needs.package-matrix.outputs.matrix) }}
     steps:
       - if: ${{ !matrix.skip }}
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -86,7 +86,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - if: needs.package-matrix.outputs.docs-only != 'true'
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -127,7 +127,7 @@ jobs:
         options: ${{ matrix.database.options }}
     steps:
       - if: needs.package-matrix.outputs.run-databases == 'true'
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -162,7 +162,7 @@ jobs:
       DB_CONNECTION: sqlite
       DB_DATABASE: ':memory:'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -187,7 +187,7 @@ jobs:
         shard: [1, 2, 3, 4]
     steps:
       - if: needs.package-matrix.outputs.mutate-scope == 'all' || needs.package-matrix.outputs.mutate-classes != '[]'
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
