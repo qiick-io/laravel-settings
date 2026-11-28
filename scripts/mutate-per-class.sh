@@ -70,7 +70,11 @@ while IFS= read -r file; do
     fi
   done
 
-  if grep -q 'No mutations created' "$output"; then
+  # Match pest's own summary line only. A failing MutationGateScriptTest prints
+  # its source (which quotes the stub string "No mutations created") into the
+  # same tee'd output; a bare substring grep would false-positive every class.
+  plain=$(sed $'s/\x1b\\[[0-9;]*m//g' "$output")
+  if printf '%s\n' "$plain" | grep -qE '^[[:space:]]*INFO[[:space:]]+No mutations created\.?[[:space:]]*$'; then
     if [[ "$is_listed" == false ]]; then
       echo "::error::$file creates no mutant: list it in no_mutant_files with the reason, or fix its path."
       failed=1
