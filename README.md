@@ -14,7 +14,7 @@ PHPStan at `max` and the existing CI checks cover PHP. CodeQL covers GitHub Acti
 
 Scoped, typed settings and encrypted secrets for qiick Laravel products.
 
-> **Pre-release.** `0.1.0-beta.1` is on Packagist for qiick products. Public APIs and the storage schema can change before 1.0.0. See the [upgrade guide](UPGRADING.md) before adopting it in a product with existing settings.
+> **Pre-release.** `0.1.0-beta.2` is on Packagist for qiick products. Public APIs and the storage schema can change before 1.0.0. See the [upgrade guide](UPGRADING.md) before adopting it in a product with existing settings.
 
 ## Requirements
 
